@@ -2,7 +2,15 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 
 ## Getting Started
 
-First, run the development server:
+Create a personal access token on Digital Ocean and add it to .env.local
+
+Add digital ocean nameservers to your domain
+https://docs.digitalocean.com/products/networking/dns/getting-started/dns-registrars/
+
+Add your domain to Digital Ocean
+https://docs.digitalocean.com/products/networking/dns/how-to/add-domains/#add-a-domain-using-the-control-panel
+
+Run the development server:
 
 ```bash
 npm run dev
