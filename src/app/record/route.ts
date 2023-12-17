@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
   const data = {
     type: "TXT",
-    name: localPart,
+    name: process.env.NETWORK ? localPart + "." + process.env.NETWORK : localPart,
     data: bolt12,
     priority: null,
     port: null,
