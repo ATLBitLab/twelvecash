@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 const axios = require("axios").default;
 
-const DOMAIN = "bolt12.me";
-const DO_URL = `https://api.digitalocean.com/v2/domains/${DOMAIN}/records`;
+const DO_URL = `https://api.digitalocean.com/v2/domains/${process.env.DOMAIN}/records`;
 
 export async function POST(req: NextRequest) {
   let localPart: string, bolt12: string;
