@@ -1,16 +1,34 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 const axios = require("axios").default;
 
 const DOMAIN = "bolt12.me";
 const DO_URL = `https://api.digitalocean.com/v2/domains/${DOMAIN}/records`;
 
-export async function POST(req: Request) {
-  // console.debug(process.env.DO_API_KEY);
-  // console.debug("req", req);
+export async function POST(req: NextRequest) {
+  let localPart: string, bolt12: string;
+  try {
+    const json = await req.json();
+    console.debug("json", json);
+    if (!json.localPart || !json.bolt12)
+      return NextResponse.json(
+        { error: "Missing parameters" },
+        { status: 400 }
+      );
+    localPart = json.localPart;
+    bolt12 = json.bolt12;
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json({ error: "Bad request" }, { status: 400 });
+  }
+
+  console.debug("localPart", localPart, "bolt12", bolt12);
+
+  // validate localPart, validate bolt12...
+
   const data = {
     type: "TXT",
-    name: "chad",
-    data: "lno1qqx2n6mw2fh2...",
+    name: localPart,
+    data: bolt12,
     priority: null,
     port: null,
     ttl: 1800,
@@ -36,5 +54,9 @@ export async function POST(req: Request) {
     .finally(function () {
       // always executed
     });
-  return NextResponse.json({ message: "hi" });
+
+  return NextResponse.json(
+    { message: "Bolt12 Address Created" },
+    { status: 201 }
+  );
 }
