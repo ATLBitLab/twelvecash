@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 const axios = require("axios").default;
 
-const DOMAIN = "bolt12.me";
-const DO_URL = `https://api.digitalocean.com/v2/domains/${DOMAIN}/records`;
+const DO_URL = `https://api.digitalocean.com/v2/domains/${process.env.DOMAIN}/records`;
 
 export async function POST(req: NextRequest) {
   let localPart: string, bolt12: string;
@@ -55,7 +54,7 @@ export async function POST(req: NextRequest) {
 
   const data = {
     type: "TXT",
-    name: localPart,
+    name: process.env.NETWORK ? localPart + "." + process.env.NETWORK : localPart,
     data: bolt12,
     priority: null,
     port: null,
