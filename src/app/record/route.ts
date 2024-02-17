@@ -27,11 +27,6 @@ export async function POST(req: NextRequest) {
   };
 
   // Check existing records. see if this one already exists
-  const params = {
-    name: localPart,
-    type: "TXT",
-  };
-
   const queryParams = `?type=TXT&name=${localPart}.bolt12.me`;
   const query = `${DO_URL}${queryParams}`;
   try {
