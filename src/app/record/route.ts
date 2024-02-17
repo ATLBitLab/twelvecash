@@ -47,7 +47,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         message: "Failed to create Paycode.",
-        error: error
       },
       { status: 400 }
     );
