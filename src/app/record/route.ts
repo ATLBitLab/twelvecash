@@ -26,8 +26,11 @@ export async function POST(req: NextRequest) {
     headers: { Authorization: `Bearer ${process.env.DO_TOKEN}` },
   };
 
-  // Check existing records. see if this one already exists
-  const queryParams = `?type=TXT&name=${localPart}.bolt12.me`;
+  const fullName = process.env.NETWORK
+    ? localPart + "." + process.env.NETWORK
+    : localPart;
+
+  const queryParams = `?type=TXT&name=${fullName}.${process.env.DOMAIN}`;
   const query = `${DO_URL}${queryParams}`;
   try {
     const res = await axios.get(query, config);
@@ -49,7 +52,7 @@ export async function POST(req: NextRequest) {
 
   const data = {
     type: "TXT",
-    name: process.env.NETWORK ? localPart + "." + process.env.NETWORK : localPart,
+    name: fullName,
     data: bolt12,
     priority: null,
     port: null,
