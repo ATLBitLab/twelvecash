@@ -9,6 +9,7 @@ export async function POST(req: NextRequest) {
   try {
     const json = await req.json();
     console.debug("json", json);
+    // validate localPart, validate bolt12...
     if (!json.localPart || !json.bolt12)
       return NextResponse.json(
         { error: "Missing parameters" },
@@ -16,14 +17,41 @@ export async function POST(req: NextRequest) {
       );
     localPart = json.localPart;
     bolt12 = json.bolt12;
+    console.debug("localPart", localPart, "bolt12", bolt12);
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "Bad request" }, { status: 400 });
   }
 
-  console.debug("localPart", localPart, "bolt12", bolt12);
+  const config = {
+    headers: { Authorization: `Bearer ${process.env.DO_TOKEN}` },
+  };
 
-  // validate localPart, validate bolt12...
+  // Check existing records. see if this one already exists
+  const params = {
+    name: localPart,
+    type: "TXT",
+  };
+
+  const queryParams = `?type=TXT&name=${localPart}.bolt12.me`;
+  const query = `${DO_URL}${queryParams}`;
+  try {
+    const res = await axios.get(query, config);
+    console.debug("query res.data", res.data);
+    console.debug("query res.data.domain_records", res.data.domain_records);
+    if (
+      res.data.domain_records.length !== 0 &&
+      res.data.domain_records[0].name === localPart
+    ) {
+      return NextResponse.json({ message: "Name is taken." }, { status: 409 });
+    }
+  } catch (error: any) {
+    console.error("error", error);
+    return NextResponse.json(
+      { message: "Failed to create Paycode." },
+      { status: 400 }
+    );
+  }
 
   const data = {
     type: "TXT",
@@ -37,23 +65,15 @@ export async function POST(req: NextRequest) {
     tag: null,
   };
 
-  const config = {
-    headers: { Authorization: `Bearer ${process.env.DO_TOKEN}` },
-  };
-  axios
-    .post(DO_URL, data, config)
-    .then(function (response) {
-      // handle success
-      // console.log(response);
-      console.debug(response.status, response.statusText, response.message);
-    })
-    .catch(function (error) {
-      // handle error
-      console.log(error);
-    })
-    .finally(function () {
-      // always executed
-    });
+  try {
+    const res = await axios.post(DO_URL, data, config);
+    console.debug(res.data);
+  } catch (error: any) {
+    return NextResponse.json(
+      { message: "Failed to create Paycode." },
+      { status: 400 }
+    );
+  }
 
   return NextResponse.json(
     { message: "Bolt12 Address Created" },
