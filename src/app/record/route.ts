@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     data: "bitcoin:b12=" + bolt12,
     priority: null,
     port: null,
-    ttl: 3600,
+    ttl: 1800,
     weight: null,
     flags: null,
     tag: null,
