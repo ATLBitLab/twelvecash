@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
   };
 
   const fullName = process.env.NETWORK
-    ? localPart + "." + process.env.NETWORK
-    : localPart;
+    ? localPart + ".user._bitcoin-payment." + process.env.NETWORK
+    : localPart + ".user._bitcoin-payment";
 
   const queryParams = `?type=TXT&name=${fullName}.${process.env.DOMAIN}`;
   const query = `${DO_URL}${queryParams}`;
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     data: bolt12,
     priority: null,
     port: null,
-    ttl: 1800,
+    ttl: 3600,
     weight: null,
     flags: null,
     tag: null,
