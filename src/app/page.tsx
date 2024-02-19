@@ -166,7 +166,7 @@ export default function Home() {
       </main>
       <footer className="border-t border-t-purple-800 pt-2 mt-4">
         <ul className="flex flex-col gap-2 md:flex-row md:gap-4 md: p-4">
-          <li><a href="/developers">Developer Docs</a></li>
+          <li><a href="https://github.com/ATLBitLab/twelvecash">Developer Docs</a></li>
           <li>Made with  🧡 at <a href="https://atlbitlab.com/">ATL BitLab</a></li>
         </ul>
       </footer>
