@@ -72,8 +72,8 @@ export default function Home() {
   }
 
   return (
-    <div className="text-purple-800 bg-12teal h-full min-h-screen flex flex-col justify-between">
-      <main className="flex flex-col gap-8">
+    <div className="text-purple-800 bg-12teal h-full flex flex-col justify-between">
+      <main className="flex flex-col gap-8 max-w-xl lg:w-1/2 lg:pt-10 lg:pl-6">
         {/* Title */}
         <div className="flex flex-col gap-2">
           <h1 className="text-5xl">TwelveCash</h1>
@@ -154,7 +154,7 @@ export default function Home() {
         : ``}
       </main>
       <footer className="border-t border-t-purple-800 pt-2 mt-4">
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-2 md:flex-row md:gap-4 md: p-4">
           <li><a href="#">Developer Docs</a></li>
           <li>Made with  🧡 at <a href="https://atlbitlab.com/">ATL BitLab</a></li>
         </ul>
