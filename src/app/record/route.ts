@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   const data = {
     type: "TXT",
     name: fullName,
-    data: bolt12,
+    data: "bitcoin:b12=" + bolt12,
     priority: null,
     port: null,
     ttl: 3600,
