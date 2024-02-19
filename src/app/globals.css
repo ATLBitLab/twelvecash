@@ -16,12 +16,10 @@
   }
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+body, html {
+  @apply h-full bg-12teal p-2;
+}
+
+a {
+  @apply underline;
 }
