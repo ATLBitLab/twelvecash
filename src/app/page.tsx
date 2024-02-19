@@ -1,22 +1,50 @@
 "use client";
 import Input from "./components/Input";
 import Button from "./components/Button";
-import { ChangeEvent, useState } from "react";
+import { useState } from "react";
 
 export default function Home() {
   const createRecord = async () => {
     const res = await fetch("/record", {
       method: "POST",
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ localPart: newUserName, bolt12: newOffer })
+    });
+    const json = await res.json();
+    console.debug("json", json);
+    if(json.error) {
+      setShowSuccess(false);
+      setFailureMessage(defaultFailureMessage);
+    }
+    else if(json.message === "Bolt12 Address Created") {
+      setShowSuccess(true);
+    }
+    else if (json.message === "Name is taken.") {
+      setShowSuccess(false);
+      setFailureMessage("This user name is already taken. Please try another one.");
+    }
+  };
+
+  const addContact = async () => {
+    const res = await fetch("https://hooks.zapier.com/hooks/catch/6163041/3e539p0/", {
+      method: "POST",
+      body: JSON.stringify({ userName: newUserName, contact: newContact })
     });
     const json = await res.json();
     console.debug("json", json);
   };
+
+  const defaultFailureMessage = "Tbh, we're not sure.";
 
   const [newUserName, setUserName] = useState("");
   const [newOffer, setOffer] = useState("");
   const [newContact, setContact] = useState("");
   const [currentStep, setCurrentStep] = useState(0);
   const [showInfo, setShowInfo] = useState(false);
+  const [showSuccess, setShowSuccess] = useState<boolean|null>(false);
+  const [failureMessage, setFailureMessage] = useState(defaultFailureMessage);
 
   const updateUserName = (value:string) => {
     setUserName(value);
@@ -40,6 +68,7 @@ export default function Home() {
     setOffer("");
     setContact("");
     setShowInfo(false);
+    setShowSuccess(null);
   }
 
   return (
@@ -84,28 +113,43 @@ export default function Home() {
 
             <div className="flex flex-row gap-2 items-center justify-end">
               <Button text="Back" format="secondary" onClick={()=>setCurrentStep(1)}  />
-              <Button text={newContact !== "" ? "Finish" : "Skip This and Finish"} format="primary" onClick={()=>setCurrentStep(3)}  />
+              <Button text={newContact !== "" ? "Finish" : "Skip This and Finish"} format="primary" onClick={()=>{createRecord(); if(newContact !== "") {addContact();} setCurrentStep(3);}}  />
             </div>
           </div>
         : currentStep === 3 ?
           <div className="flex flex-col gap-2 bg-white rounded p-4">
-            <h2 className="text-2xl font-semibold w-full hyphens-auto text-center">{newUserName}@twelve.cash</h2>
-            <p className="text-center">User name created. Share it with the world to get paid!<sup className="cursor-pointer" onClick={deepAlpha}>*</sup></p>
-            <Button text="Make Another One" onClick={startOver} />
-            <p className="text-center text-sm cursor-pointer underline" onClick={()=>setShowInfo(!showInfo)}>How do I know this worked?</p>
-            {showInfo ?
-              <div className="bg-gray-100 p-2 rounded flex flex-col gap-2">
-                  <p>You can verify that this worked by opening a shell and running:</p>
+            {showSuccess === true ?
+              <>
+                <h2 className="text-2xl font-semibold w-full hyphens-auto text-center">{newUserName}@twelve.cash</h2>
+                <p className="text-center">User name created. Share it with the world to get paid!<sup className="cursor-pointer" onClick={deepAlpha}>*</sup></p>
+                <Button text="Make Another One" onClick={startOver} />
+                <p className="text-center text-sm cursor-pointer underline" onClick={()=>setShowInfo(!showInfo)}>How do I know this worked?</p>
+                {showInfo ?
+                  <div className="bg-gray-100 p-2 rounded flex flex-col gap-2">
+                      <p>You can verify that this worked by opening a shell and running:</p>
 
-                  <code>dig txt {newUserName}.user._bitcoin-payment.twelve.cash</code>
+                      <code>dig txt {newUserName}.user._bitcoin-payment.twelve.cash</code>
 
-                  <p>The expected output should be:</p>
+                      <p>The expected output should be:</p>
 
-                  <code>
-                    {newUserName}.user._bitcoin-payment.twelve.cash. 3600 IN TXT "bitcoin:?b12={newOffer}"
-                  </code>
-              </div>
-            : ``}
+                      <code>
+                        {newUserName}.user._bitcoin-payment.twelve.cash. 3600 IN TXT "bitcoin:?b12={newOffer}"
+                      </code>
+                  </div>
+                : ``}
+              </>
+            : showSuccess === false ?
+                <>
+                  <h2 className="text-2xl font-semibold w-full hyphens-auto text-center">Sorry! 😢</h2>
+                  <p className="text-center">Something messed up and it didn't work.</p>
+                  <p className="text-center font-bold">{failureMessage}</p>
+                  <Button text="Try Again" onClick={startOver} />
+                </>
+            :
+                <>
+                  <p className="text-center">Processing...</p>
+                </>
+            }
           </div>
         : ``}
       </main>
