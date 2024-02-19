@@ -2,6 +2,8 @@
 import Input from "./components/Input";
 import Button from "./components/Button";
 import { useState } from "react";
+import Image from "next/image";
+import twelve from "../../public/12.png";
 
 export default function Home() {
   const createRecord = async () => {
@@ -43,7 +45,7 @@ export default function Home() {
   const [newContact, setContact] = useState("");
   const [currentStep, setCurrentStep] = useState(0);
   const [showInfo, setShowInfo] = useState(false);
-  const [showSuccess, setShowSuccess] = useState<boolean|null>(false);
+  const [showSuccess, setShowSuccess] = useState<boolean|null>(null);
   const [failureMessage, setFailureMessage] = useState(defaultFailureMessage);
 
   const updateUserName = (value:string) => {
@@ -73,17 +75,20 @@ export default function Home() {
 
   return (
     <div className="text-purple-800 bg-12teal h-full flex flex-col justify-between">
-      <main className="flex flex-col gap-8 max-w-xl lg:w-1/2 lg:pt-10 lg:pl-6">
+      
+      <main className="flex flex-col gap-8 max-w-xl lg:w-1/2 lg:pt-24 lg:pl-6">
+        <Image src={twelve} alt="" width={1080} height={1080} className="w-64 h-64 lg:fixed lg:right-[-15%] lg:top-0 lg:w-[800px] lg:h-[800px] xl:w-[1080px] xl:h-[1080px] pointer-events-none" />
+
         {/* Title */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 relative z-50">
           <h1 className="text-5xl">TwelveCash</h1>
           <p className="text-3xl">A simple way to receive bitcoin<sup className="cursor-pointer" onClick={deepAlpha}>*</sup></p>
         </div>
 
-        <p>Choose your own user name, give us your bitcoin payment instructions, and share your user name with the world!</p>
+        <p className="relative z-50">Choose your own user name, give us your bitcoin payment instructions, and share your user name with the world!</p>
         
         {currentStep === 0 ?
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 relative z-50">
             <h2 className="font-bold">1. Choose a User Name</h2>
 
             <Input placeholder="satoshi" append="@twelve.cash" value={newUserName} onChange={updateUserName} />
@@ -155,7 +160,7 @@ export default function Home() {
       </main>
       <footer className="border-t border-t-purple-800 pt-2 mt-4">
         <ul className="flex flex-col gap-2 md:flex-row md:gap-4 md: p-4">
-          <li><a href="#">Developer Docs</a></li>
+          <li><a href="/developers">Developer Docs</a></li>
           <li>Made with  🧡 at <a href="https://atlbitlab.com/">ATL BitLab</a></li>
         </ul>
       </footer>
