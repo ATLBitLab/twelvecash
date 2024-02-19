@@ -138,7 +138,7 @@ export default function Home() {
                       <p>The expected output should be:</p>
 
                       <code>
-                        {newUserName}.user._bitcoin-payment.twelve.cash. 3600 IN TXT "bitcoin:?b12={newOffer}"
+                        {newUserName}.user._bitcoin-payment.twelve.cash. 3600 IN TXT &quot;bitcoin:?b12={newOffer}&quot;
                       </code>
                   </div>
                 : ``}
@@ -146,7 +146,7 @@ export default function Home() {
             : showSuccess === false ?
                 <>
                   <h2 className="text-2xl font-semibold w-full hyphens-auto text-center">Sorry! 😢</h2>
-                  <p className="text-center">Something messed up and it didn't work.</p>
+                  <p className="text-center">Something messed up and it didn&apos;t work.</p>
                   <p className="text-center font-bold">{failureMessage}</p>
                   <Button text="Try Again" onClick={startOver} />
                 </>
