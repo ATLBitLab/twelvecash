@@ -76,7 +76,14 @@ export default function Home() {
     <div className="text-purple-800 bg-12teal h-full flex flex-col justify-between">
       
       <main className="flex flex-col gap-8 max-w-xl lg:w-1/2 lg:pt-24 lg:pl-6">
-        <Image src="/twelve.png" alt="" width={1080} height={1080} className="w-64 h-64 lg:fixed lg:right-[-15%] lg:top-0 lg:w-[800px] lg:h-[800px] xl:w-[1080px] xl:h-[1080px] pointer-events-none" />
+        <Image
+          src="/twelve.png"
+          alt=""
+          width={1080}
+          height={1080}
+          sizes="(min-width: 1024px) 800px, (min-width: 1280px) 1080px, 256px"
+          className="w-64 h-64 lg:fixed lg:right-[-15%] lg:top-0 lg:w-[800px] lg:h-[800px] xl:w-[1080px] xl:h-[1080px] pointer-events-none"
+        />
 
         {/* Title */}
         <div className="flex flex-col gap-2 relative z-50">
