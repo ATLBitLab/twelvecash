@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { ChangeEvent, useState } from "react";
 
 interface InputProps {
     placeholder?: string;
@@ -7,10 +7,15 @@ interface InputProps {
     append?: string;
     prepend?: string;
     focus?: boolean;
+    onChange?: (value:string) => void;
 }
 
 export default function Input(props:InputProps) {
     const [focus, setFocus] = useState(false);
+
+    const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if(props.onChange) props.onChange(event.target.value);
+    }
 
     return (
         <>
@@ -25,6 +30,7 @@ export default function Input(props:InputProps) {
                     value={props.value}
                     onFocus={ ()=>{ setFocus(true); } }
                     onBlur={ ()=>{ setFocus(false); } }
+                    onChange={handleInputChange}
                 />
                 <div className={`text-black ${!props.append ? 'hidden' : ''}`}>
                     {props.append}
