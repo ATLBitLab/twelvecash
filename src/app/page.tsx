@@ -144,7 +144,7 @@ export default function Home() {
                       <p>The expected output should be:</p>
 
                       <code>
-                        {newUserName}.user._bitcoin-payment.twelve.cash. 3600 IN TXT &quot;bitcoin:?b12={newOffer}&quot;
+                        {newUserName}.user._bitcoin-payment.twelve.cash. 3600 IN TXT &quot;bitcoin:?lno={newOffer}&quot;
                       </code>
                   </div>
                 : ``}
