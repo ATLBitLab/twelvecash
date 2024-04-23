@@ -29,17 +29,22 @@ You can verify that this worked by opening a shell and running:
 
 The expected output should be:
 
-`satoshi.user._bitcoin-payment.twelve.cash. 3600 IN TXT "bitcoin:?b12=lno1pgtyymmvwscnygzsv9uk6etwwssyzerywfjhxuckyypme4su43qu44v09r28p6whddr62zkyuj68ha68kky2za4zrdu9uuq"`
+`satoshi.user._bitcoin-payment.twelve.cash. 3600 IN TXT "bitcoin:?lno=lno1pgtyymmvwscnygzsv9uk6etwwssyzerywfjhxuckyypme4su43qu44v09r28p6whddr62zkyuj68ha68kky2za4zrdu9uuq"`
+
+## Validate a User Name
+
+For this, we rely on the [dnssec-prover tool](https://github.com/TheBlueMatt/dnssec-prover) from TheBlueMatt. THis (or something like it) should be built into any tool that facilitates payments to Twelve Cash addresses. However, we have exposed this on our website frontend so you can experiment and validate these addresses.
 
 ## Roadmap
 
 - [x] Create [API](https://github.com/ATLBitLab/twelvecash/blob/main/src/app/record/route.ts) for adding bitcoin payment instructions to DNS records
 - [x] Create [Web UI](https://twelve.cash) for creating user names
 - [x] Integrate API into popular bitcoin wallet - [Zeus](https://github.com/atlbitlab/zeus)
-- [ ] Add support for DNSSEC
-- [ ] Follow [BIP Draft](https://github.com/bitcoin/bips/pull/1551/files) progress and update TwelveCash as the spec matures
+- [x] Add support for DNSSEC
+- [x] Follow [BIP Draft](https://github.com/bitcoin/bips/pull/1551/files) progress and update TwelveCash as the spec matures
 - [ ] Create easy way for users to edit/update their Twelve Cash user name
 
+₿
 ## Development
 
 Create a personal access token on Digital Ocean and add it to .env.local
