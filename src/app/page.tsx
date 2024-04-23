@@ -50,7 +50,7 @@ export default function Home() {
   const [showInfo, setShowInfo] = useState(false);
   const [showSuccess, setShowSuccess] = useState<boolean|null>(null);
   const [failureMessage, setFailureMessage] = useState(defaultFailureMessage);
-  const [userNameToCheck, setUserNameToCheck] = useState("stephen@twelve.cash");
+  const [userNameToCheck, setUserNameToCheck] = useState("₿stephen@twelve.cash");
   const [userNameCheck, setUserNameCheck] = useState<any>({});
 
   const updateUserName = (value:string) => {
@@ -188,7 +188,7 @@ export default function Home() {
 
         <div className="flex flex-col gap-2 pt-4 border-t border-purple-600">
           <h2 className="font-bold">Check a User Name</h2>
-          <Input placeholder="stephen@twelve.cash" value={userNameToCheck} onChange={updateUserNameToCheck} />
+          <Input placeholder="₿satoshi@twelve.cash" value={userNameToCheck} onChange={updateUserNameToCheck} />
           <Button text="Validate a Pay Code" format="secondary" onClick={()=>checkUserName(userNameToCheck)} />
           <div className="bg-gray-100 p-2 rounded flex flex-col gap-2 overflow-x-scroll">
             {userNameCheck.valid_from ?
