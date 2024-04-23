@@ -1,0 +1,23 @@
+{
+  "name": "dnssec-prover-wasm",
+  "collaborators": [
+    "Matt Corallo"
+  ],
+  "description": "A simple crate which allows for the creation and validation of transferrable proofs of entries in the DNS.",
+  "version": "0.1.0",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://git.bitcoin.ninja/index.cgi?p=dnssec-prover"
+  },
+  "files": [
+    "dnssec_prover_wasm_bg.wasm",
+    "dnssec_prover_wasm.js",
+    "dnssec_prover_wasm.d.ts"
+  ],
+  "module": "dnssec_prover_wasm.js",
+  "types": "dnssec_prover_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

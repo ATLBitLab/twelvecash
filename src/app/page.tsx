@@ -3,6 +3,10 @@ import Input from "./components/Input";
 import Button from "./components/Button";
 import { useState } from "react";
 import Image from "next/image";
+import init, {verify_byte_stream} from '../lib/dnssec-prover/dnssec_prover_wasm.js';
+import * as doh from '../lib/dnssec-prover/doh_lookup.js';
+import {CheckIcon, CrossIcon} from '@bitcoin-design/bitcoin-icons-react/filled'
+
 
 export default function Home() {
   const createRecord = async () => {
@@ -46,9 +50,15 @@ export default function Home() {
   const [showInfo, setShowInfo] = useState(false);
   const [showSuccess, setShowSuccess] = useState<boolean|null>(null);
   const [failureMessage, setFailureMessage] = useState(defaultFailureMessage);
+  const [userNameToCheck, setUserNameToCheck] = useState("₿stephen@twelve.cash");
+  const [userNameCheck, setUserNameCheck] = useState<any>({});
 
   const updateUserName = (value:string) => {
     setUserName(value);
+  }
+
+  const updateUserNameToCheck = (value:string) => {
+    setUserNameToCheck(value);
   }
 
   const updateOffer = (value:string) => {
@@ -70,6 +80,16 @@ export default function Home() {
     setContact("");
     setShowInfo(false);
     setShowSuccess(null);
+  }
+
+  const checkUserName = (username:string)=>{
+      let stripped = username.indexOf("₿") === 0 ? username.split("₿")[1]  : username;
+      let name = stripped.split("@")[0];
+      let domain = stripped.split("@")[1];
+      console.log(`${name}.user._bitcoin-payment.${domain}`);
+      doh.lookup_doh(`${name}.user._bitcoin-payment.${domain}`, 'TXT', 'https://dns.google/dns-query').then((response)=>{  
+        setUserNameCheck(JSON.parse(response));
+      });
   }
 
   return (
@@ -97,7 +117,7 @@ export default function Home() {
           <div className="flex flex-col gap-2 relative z-50">
             <h2 className="font-bold">1. Choose a User Name</h2>
 
-            <Input placeholder="satoshi" append="@twelve.cash" value={newUserName} onChange={updateUserName} />
+            <Input placeholder="satoshi" prepend="₿" append="@twelve.cash" value={newUserName} onChange={updateUserName} />
 
             <Button text="Continue" format="primary" disabled={newUserName === ""} onClick={()=>setCurrentStep(1)}  />
           </div>
@@ -136,7 +156,7 @@ export default function Home() {
                 <Button text="Make Another One" onClick={startOver} />
                 <p className="text-center text-sm cursor-pointer underline" onClick={()=>setShowInfo(!showInfo)}>How do I know this worked?</p>
                 {showInfo ?
-                  <div className="bg-gray-100 p-2 rounded flex flex-col gap-2">
+                  <div className="bg-gray-100 p-2 rounded flex flex-col gap-2 overflow-auto">
                       <p>You can verify that this worked by opening a shell and running:</p>
 
                       <code>dig txt {newUserName}.user._bitcoin-payment.twelve.cash</code>
@@ -163,6 +183,25 @@ export default function Home() {
             }
           </div>
         : ``}
+
+        
+
+        <div className="flex flex-col gap-2 pt-4 border-t border-purple-600">
+          <h2 className="font-bold">Check a User Name</h2>
+          <Input placeholder="₿satoshi@twelve.cash" value={userNameToCheck} onChange={updateUserNameToCheck} />
+          <Button text="Validate a Pay Code" format="secondary" onClick={()=>checkUserName(userNameToCheck)} />
+          <div className="bg-gray-100 p-2 rounded flex flex-col gap-2 overflow-x-scroll">
+            {userNameCheck.valid_from ?
+            <h3 className="font-semibold flex flex-row gap-2"><CheckIcon className="w-6 h-6" /> This is a valid user name</h3>
+            : userNameCheck.error ?
+            <h3 className="font-semibold flex flex-row gap-2"><CrossIcon className="w-6 h-6" /> This is NOT a valid user name</h3>
+            : ``}
+            <code>
+              {JSON.stringify(userNameCheck)}
+            </code>
+          </div>
+        </div>
+        
       </main>
       <footer className="border-t border-t-purple-800 pt-2 mt-4">
         <ul className="flex flex-col gap-2 md:flex-row md:gap-4 md: p-4">
