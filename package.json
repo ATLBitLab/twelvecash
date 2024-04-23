@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@bitcoin-design/bitcoin-icons-react": "^0.1.10",
     "axios": "^1.6.2",
     "next": "14.0.3",
     "react": "^18",
