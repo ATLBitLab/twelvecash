@@ -50,14 +50,13 @@ You can use this tool with Cloudflare or Digital OCean DNS. However, if you want
 
 ### Cloudflare
 
-- Setup your domain with DNSSEC - [Docs]([url](https://developers.cloudflare.com/dns/dnssec/))
+- Setup your domain with DNSSEC - [Docs](https://developers.cloudflare.com/dns/dnssec/)
 - Create an API token in Cloudflare, giving it access to your domain name
 - In the .env file, set `PROVIDER="cloudflare"` and add your Cloudflare API token and domain ID (which you can find by clicking on your domain name in Cloudflare and scrolling down the page)
 
 ### Digital Ocean
 
 - Create a personal access token on Digital Ocean and add it to .env.local
-- Add digital ocean nameservers to your domain - Docs
 - In the .env file, set `PROVIDER="digitalocean"` and add your Digital Ocean API token
 
 ### Running the Dev Server
