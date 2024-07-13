@@ -32,20 +32,10 @@ export default function Home() {
     }
   };
 
-  const addContact = async () => {
-    const res = await fetch("https://hooks.zapier.com/hooks/catch/6163041/3e539p0/", {
-      method: "POST",
-      body: JSON.stringify({ userName: newUserName, contact: newContact })
-    });
-    const json = await res.json();
-    console.debug("json", json);
-  };
-
   const defaultFailureMessage = "Tbh, we're not sure.";
 
   const [newUserName, setUserName] = useState("");
   const [newOffer, setOffer] = useState("");
-  const [newContact, setContact] = useState("");
   const [currentStep, setCurrentStep] = useState(0);
   const [showInfo, setShowInfo] = useState(false);
   const [showSuccess, setShowSuccess] = useState<boolean|null>(null);
@@ -65,10 +55,6 @@ export default function Home() {
     setOffer(value);
   }
 
-  const updateContact = (value:string) => {
-    setContact(value);
-  }
-
   const deepAlpha = () => {
     alert("this is deep alpha, y'all");
   }
@@ -77,7 +63,6 @@ export default function Home() {
     setCurrentStep(0);
     setUserName("");
     setOffer("");
-    setContact("");
     setShowInfo(false);
     setShowSuccess(null);
   }
@@ -131,23 +116,10 @@ export default function Home() {
 
             <div className="flex flex-row gap-2 items-center justify-end">
               <Button text="Back" format="secondary" onClick={()=>setCurrentStep(0)}  />
-              <Button text="Continue" format="primary" disabled={newOffer === ""} onClick={()=>setCurrentStep(2)}  />
+              <Button text="Finish" format="primary" onClick={()=>{createRecord(); setCurrentStep(2);}}  />
             </div>
           </div>
         : currentStep === 2 ?
-          <div className="flex flex-col gap-2">
-            <h2 className="font-bold">3. Ownership (optional)</h2>
-
-            <p>Do you want to be able to edit this username later? If so, give us an email address, Nostr npub, etc. that you will contact us from to do so. This is optional!</p>
-
-            <Input placeholder="name@email.com" value={newContact} onChange={updateContact} />
-
-            <div className="flex flex-row gap-2 items-center justify-end">
-              <Button text="Back" format="secondary" onClick={()=>setCurrentStep(1)}  />
-              <Button text={newContact !== "" ? "Finish" : "Skip This and Finish"} format="primary" onClick={()=>{createRecord(); if(newContact !== "") {addContact();} setCurrentStep(3);}}  />
-            </div>
-          </div>
-        : currentStep === 3 ?
           <div className="flex flex-col gap-2 bg-white rounded p-4">
             {showSuccess === true ?
               <>
@@ -183,8 +155,6 @@ export default function Home() {
             }
           </div>
         : ``}
-
-        
 
         <div className="flex flex-col gap-2 pt-4 border-t border-purple-600">
           <h2 className="font-bold">Check a User Name</h2>
