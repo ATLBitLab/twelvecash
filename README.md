@@ -1,3 +1,5 @@
+![](https://twelve.cash/twelve-cash-hero.webp)
+
 # Twelve Cash
 
 > :warning: **Caution:** This is alpha software. Seeking feedback and reviews.
