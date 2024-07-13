@@ -3,7 +3,6 @@ import Input from "./components/Input";
 import Button from "./components/Button";
 import { useState } from "react";
 import Image from "next/image";
-import init, {verify_byte_stream} from '../lib/dnssec-prover/dnssec_prover_wasm.js';
 import * as doh from '../lib/dnssec-prover/doh_lookup.js';
 import {CheckIcon, CrossIcon} from '@bitcoin-design/bitcoin-icons-react/filled'
 
@@ -71,7 +70,6 @@ export default function Home() {
       let stripped = username.indexOf("₿") === 0 ? username.split("₿")[1]  : username;
       let name = stripped.split("@")[0];
       let domain = stripped.split("@")[1];
-      console.log(`${name}.user._bitcoin-payment.${domain}`);
       doh.lookup_doh(`${name}.user._bitcoin-payment.${domain}`, 'TXT', 'https://dns.google/dns-query').then((response)=>{  
         setUserNameCheck(JSON.parse(response));
       });
