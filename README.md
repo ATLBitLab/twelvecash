@@ -1,4 +1,4 @@
-![](https://twelve.cash/twelve-cash-hero.webp)
+![Twelve Cash](https://twelve.cash/twelve-cash-hero.webp)
 
 # Twelve Cash
 
