@@ -8,7 +8,7 @@ const { z } = require("zod");
 
 /*eslint sort-keys: "error"*/
 const envSchema = z.object({
-  NETWORK: z.enum(["", "testnet", "regtest"]),
+  NETWORK: z.enum(["mainnet", "testnet", "regtest"]),
   DOMAIN: z.string(),
   PROVIDER: z.enum(["cloudflare"]),
   CF_TOKEN: z.string(),

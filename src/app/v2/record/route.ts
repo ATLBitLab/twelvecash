@@ -74,9 +74,10 @@ export async function POST(req: NextRequest) {
   }
 
   // Begin assembling DNS name
-  const fullName = process.env.NETWORK
-    ? payload.username + ".user._bitcoin-payment." + process.env.NETWORK
-    : payload.username + ".user._bitcoin-payment";
+  const fullName =
+    process.env.NETWORK === "mainnet"
+      ? payload.username + ".user._bitcoin-payment"
+      : payload.username + ".user._bitcoin-payment." + process.env.NETWORK;
 
   const data = {
     content: bip21,
