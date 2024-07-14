@@ -44,10 +44,8 @@ export async function POST(req: NextRequest) {
   const result = Payload.safeParse(payload);
   if (!result.success) {
     return NextResponse.json(
-      { error: JSON.stringify(result.error.format(), null, 4) }, // fix error output
-      {
-        status: 400,
-      }
+      { error: { message: "Invalid request", errors: result.error.issues } },
+      { status: 400 }
     );
   }
 
@@ -63,10 +61,13 @@ export async function POST(req: NextRequest) {
     bip21 = createBip21(bip21Dict);
   } catch (e: any) {
     return NextResponse.json(
-      { error: e },
       {
-        status: 400,
-      }
+        error: {
+          message: "Failed to create bip21 URI",
+          errors: [{ message: e.message }],
+        },
+      },
+      { status: 400 }
     );
   }
 
@@ -92,7 +93,15 @@ export async function POST(req: NextRequest) {
     if (error.response.data.errors[0].code === 81058) {
       message = "Name is already taken.";
     }
-    return NextResponse.json({ message: message }, { status: 400 });
+    return NextResponse.json(
+      {
+        error: {
+          message: "Failed to update DNS record",
+          errors: [{ message: message }],
+        },
+      },
+      { status: 400 }
+    );
   }
 
   return NextResponse.json(
