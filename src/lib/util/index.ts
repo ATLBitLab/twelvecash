@@ -1,4 +1,5 @@
 import { bech32 } from "bech32";
+import { z } from "zod";
 
 export const lnaddrToLNURL = (lnaddr: string) => {
   const [username, domain] = lnaddr.split("@");
@@ -49,3 +50,11 @@ export const createBip21 = (payload: Bip21Dict): string => {
 
   return bip21;
 };
+
+export function getZodEnumFromObjectKeys<
+  TI extends Record<string, any>,
+  R extends string = TI extends Record<infer R, any> ? R : never
+>(input: TI): z.ZodEnum<[R, ...R[]]> {
+  const [firstKey, ...otherKeys] = Object.keys(input) as [R, ...R[]];
+  return z.enum([firstKey, ...otherKeys]);
+}

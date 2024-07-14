@@ -1,5 +1,4 @@
-import { CF_URL } from "@/lib/constants";
-import { Bip21Dict, createBip21 } from "@/lib/util";
+import { Bip21Dict, createBip21, getZodEnumFromObjectKeys } from "@/lib/util";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 const axios = require("axios").default;
@@ -9,10 +8,12 @@ const Custom = z.object({
   value: z.string(),
 });
 
+const domainMap = JSON.parse(process.env.DOMAINS!);
+
 const Payload = z
   .object({
     userName: z.string(),
-    domain: z.enum([process.env.DOMAIN!]),
+    domain: getZodEnumFromObjectKeys(domainMap),
     onChain: z.string().optional(),
     label: z.string().optional(),
     lno: z.string().optional(),
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
 
   const data = {
     content: bip21,
-    name: `${fullName}.${process.env.DOMAIN}`,
+    name: `${fullName}.${payload.domain}`,
     proxied: false,
     type: "TXT",
     comment: "Twelve Cash User DNS Update",
@@ -86,6 +87,9 @@ export async function POST(req: NextRequest) {
   };
 
   try {
+    const CF_URL = `https://api.cloudflare.com/client/v4/zones/${
+      domainMap[payload.domain]
+    }/dns_records/`;
     const res = await axios.post(CF_URL, data, config);
     console.debug(res.data);
   } catch (error: any) {

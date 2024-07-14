@@ -4,16 +4,29 @@
  */
 const { z } = require("zod");
 
-const envSchema = z.object({
-  NETWORK: z.enum(["", "testnet", "regtest"]),
-  DOMAIN: z.string(),
-  PROVIDER: z.enum(["cloudflare"]),
-  CF_TOKEN: z.string(),
-  CF_DOMAIN_ID: z.string(),
-  NODE_ENV: z.enum(["development", "test", "production"]),
-});
+let domainMap = {};
+if (process.env.DOMAINS) {
+  try {
+    domainMap = JSON.parse(process.env.DOMAINS);
+  } catch (e) {
+    console.error("Failed to parse DOMAIN_MAP:", e);
+    process.exit(1);
+  }
+}
 
-const env = envSchema.safeParse(process.env);
+const envSchema = z
+  .object({
+    NETWORK: z.enum(["", "testnet", "regtest"]),
+    DOMAINS: z.record(z.string(), z.string()),
+    PROVIDER: z.enum(["cloudflare"]),
+    CF_TOKEN: z.string(),
+    NODE_ENV: z.enum(["development", "test", "production"]),
+  })
+  .refine(
+    (data) => Object.keys(data.DOMAINS).length > 0,
+    "Requires at least one domain: domainId pair"
+  );
+const env = envSchema.safeParse({ ...process.env, DOMAINS: domainMap });
 
 if (!env.success) {
   console.error(
@@ -22,4 +35,5 @@ if (!env.success) {
   );
   process.exit(1);
 }
+
 module.exports.env = env.data;
