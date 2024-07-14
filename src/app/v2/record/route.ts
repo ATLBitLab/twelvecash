@@ -1,8 +1,10 @@
+import { CF_URL } from "@/lib/constants";
+import { Bip21Dict, createBip21 } from "@/lib/util";
 import { NextRequest, NextResponse } from "next/server";
-import { ZodError, z } from "zod";
+import { z } from "zod";
 const axios = require("axios").default;
 
-const DOMAINS = ["twelve.cash"] as const;
+const DOMAINS = ["12cash.dev"] as const;
 const DomainEnums = z.enum(DOMAINS);
 
 const Custom = z.object({
@@ -32,8 +34,6 @@ const Payload = z
     }
   );
 
-const CF_URL = `https://api.cloudflare.com/client/v4/zones/${process.env.CF_DOMAIN_ID}/dns_records/`;
-
 const config = {
   method: "POST",
   headers: {
@@ -42,38 +42,64 @@ const config = {
   },
 };
 
-// max character length 2048
 export async function POST(req: NextRequest) {
-  const json = await req.json();
-  const result = Payload.safeParse(json);
+  const payload = await req.json();
+  const result = Payload.safeParse(payload);
   if (!result.success) {
-    return NextResponse.json({ errors: result.error.issues }, { status: 400 });
+    return NextResponse.json(
+      { error: JSON.stringify(result.error.format(), null, 4) }, // fix error output
+      {
+        status: 400,
+      }
+    );
   }
 
-  const { username, domain, onChain, lno, sp, custom } = json;
-  console.debug("username", username);
-  console.debug("domain", domain);
-  console.debug("onChain", onChain);
-  console.debug("lno", lno);
-  console.debug("sp", sp);
-  console.debug("custom", custom);
+  const bip21Dict: Bip21Dict = {
+    onChain: payload.onChain,
+    lno: payload.lno,
+    sp: payload.sp,
+    custom: payload.custom,
+  };
+
+  let bip21: string;
+  try {
+    bip21 = createBip21(bip21Dict);
+  } catch (e: any) {
+    return NextResponse.json(
+      { error: e },
+      {
+        status: 400,
+      }
+    );
+  }
 
   // Begin assembling DNS name
   const fullName = process.env.NETWORK
-    ? username + ".user._bitcoin-payment." + process.env.NETWORK
-    : username + ".user._bitcoin-payment";
+    ? payload.username + ".user._bitcoin-payment." + process.env.NETWORK
+    : payload.username + ".user._bitcoin-payment";
 
-  console.debug("fullName", fullName);
+  const data = {
+    content: bip21,
+    name: `${fullName}.${process.env.DOMAIN}`,
+    proxied: false,
+    type: "TXT",
+    comment: "Twelve Cash User DNS Update",
+    ttl: 3600,
+  };
 
-  // const data = {
-  //   // content: "bitcoin:?lno=" + bip21,
-  //   // content: bip21,
-  //   name: `${fullName}.${process.env.DOMAIN}`,
-  //   proxied: false,
-  //   type: "TXT",
-  //   comment: "Twelve Cash User DNS Update",
-  //   ttl: 3600,
-  // };
+  try {
+    const res = await axios.post(CF_URL, data, config);
+    console.debug(res.data);
+  } catch (error: any) {
+    let message = "Failed to create Paycode.";
+    if (error.response.data.errors[0].code === 81058) {
+      message = "Name is already taken.";
+    }
+    return NextResponse.json({ message: message }, { status: 400 });
+  }
 
-  return NextResponse.json({ message: "success!" }, { status: 201 });
+  return NextResponse.json(
+    { message: "Bip353 Address Created" },
+    { status: 201 }
+  );
 }
