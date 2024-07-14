@@ -3,7 +3,11 @@ import Input from "../components/Input";
 import  Button from "../components/Button";
 import { useState } from "react";
 
-export default function CreateForm(){
+type CreateFormProps = {
+    defaultDomain: string;
+}
+
+export default function CreateForm(props:CreateFormProps){
     const createRecord = async () => {
         const res = await fetch("/record", {
             method: "POST",
@@ -62,7 +66,7 @@ export default function CreateForm(){
                 <div className="flex flex-col gap-4 relative z-50">
                     <h2 className="font-bold">1. Choose a User Name</h2>
 
-                    <Input placeholder="satoshi" prepend="₿" append="@twelve.cash" value={newUserName} onChange={updateUserName} />
+                    <Input placeholder="satoshi" prepend="₿" append={"@" + props.defaultDomain} value={newUserName} onChange={updateUserName} />
 
                     <Button text="Continue" format="primary" disabled={newUserName === ""} onClick={()=>setCurrentStep(1)}  />
                 </div>
@@ -83,7 +87,7 @@ export default function CreateForm(){
                 <div className="flex flex-col gap-4 bg-white rounded p-4">
                     {showSuccess === true ?
                     <>
-                        <h2 className="text-2xl font-semibold w-full hyphens-auto text-center">{newUserName}@twelve.cash</h2>
+                        <h2 className="text-2xl font-semibold w-full hyphens-auto text-center">{newUserName}@{props.defaultDomain}</h2>
                         <p className="text-center">User name created. Share it with the world to get paid!<sup className="cursor-pointer" onClick={deepAlpha}>*</sup></p>
                         <Button text="Make Another One" onClick={startOver} />
                         <p className="text-center text-sm cursor-pointer underline" onClick={()=>setShowInfo(!showInfo)}>How do I know this worked?</p>
@@ -91,12 +95,12 @@ export default function CreateForm(){
                         <div className="bg-gray-100 p-2 rounded flex flex-col gap-2 overflow-auto">
                             <p>You can verify that this worked by opening a shell and running:</p>
 
-                            <code>dig txt {newUserName}.user._bitcoin-payment.twelve.cash</code>
+                            <code>dig txt {newUserName}.user._bitcoin-payment.{props.defaultDomain}</code>
 
                             <p>The expected output should be:</p>
 
                             <code>
-                                {newUserName}.user._bitcoin-payment.twelve.cash. 3600 IN TXT &quot;bitcoin:?lno={newOffer}&quot;
+                                {newUserName}.user._bitcoin-payment.{props.defaultDomain}. 3600 IN TXT &quot;bitcoin:?lno={newOffer}&quot;
                             </code>
                         </div>
                         : ``}

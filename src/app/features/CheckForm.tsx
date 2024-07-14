@@ -5,8 +5,12 @@ import { useState } from "react";
 import * as doh from '../../lib/dnssec-prover/doh_lookup.js';
 import { CheckIcon, CrossIcon } from "@bitcoin-design/bitcoin-icons-react/filled";
 
-export default function CheckForm(){
-    const [userNameToCheck, setUserNameToCheck] = useState("₿stephen@twelve.cash");
+type CheckFormPrps = {
+    defaultDomain: string;
+}
+
+export default function CheckForm(props:CheckFormPrps){
+    const [userNameToCheck, setUserNameToCheck] = useState("₿stephen@" + props.defaultDomain);
     const [userNameCheck, setUserNameCheck] = useState<any>({});
 
     const updateUserNameToCheck = (value:string) => {
@@ -27,7 +31,7 @@ export default function CheckForm(){
         <>
             <div className="flex flex-col gap-2 pt-4 border-t border-purple-600">
                 <h2 className="font-bold">Check a User Name</h2>
-                <Input placeholder="₿satoshi@twelve.cash" value={userNameToCheck} onChange={updateUserNameToCheck} />
+                <Input placeholder={"₿satoshi@" + props.defaultDomain} value={userNameToCheck} onChange={updateUserNameToCheck} />
                 <Button text="Validate a Pay Code" format="secondary" onClick={()=>checkUserName(userNameToCheck)} />
                 <div className="bg-gray-100 p-2 rounded flex flex-col gap-2 overflow-x-scroll">
                     {userNameCheck.valid_from ? userNameCheck.verified_rrs.length === 1 ?
