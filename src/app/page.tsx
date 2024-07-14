@@ -1,13 +1,9 @@
-"use client";
 import Image from "next/image";
 import CreateForm from "./features/CreateForm";
 import CheckForm from "./features/CheckForm";
+import Tagline from "./features/Tagline";
 
 export default function Home() {
-  const deepAlpha = () => {
-    alert("this is deep alpha, y'all");
-  }
-
   return (
       <main className="flex flex-col gap-8 max-w-xl lg:w-1/2 lg:pt-24 lg:pl-6">
         <Image
@@ -22,7 +18,7 @@ export default function Home() {
         {/* Title */}
         <div className="flex flex-col gap-2 relative z-50">
           <h1 className="text-5xl">TwelveCash</h1>
-          <p className="text-3xl">A simple way to receive bitcoin<sup className="cursor-pointer" onClick={deepAlpha}>*</sup></p>
+          <Tagline />
         </div>
 
         <p className="relative z-50">Choose your own user name, give us your bitcoin payment instructions, and share your user name with the world!</p>
