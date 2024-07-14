@@ -4,9 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 const axios = require("axios").default;
 
-const DOMAINS = ["12cash.dev"] as const;
-const DomainEnums = z.enum(DOMAINS);
-
 const Custom = z.object({
   prefix: z.string(),
   value: z.string(),
@@ -14,8 +11,8 @@ const Custom = z.object({
 
 const Payload = z
   .object({
-    username: z.string(),
-    domain: DomainEnums,
+    userName: z.string(),
+    domain: z.enum([process.env.DOMAIN!]),
     onChain: z.string().optional(),
     label: z.string().optional(),
     lno: z.string().optional(),
@@ -74,10 +71,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Begin assembling DNS name
-  const fullName =
-    process.env.NETWORK === "mainnet"
-      ? payload.username + ".user._bitcoin-payment"
-      : payload.username + ".user._bitcoin-payment." + process.env.NETWORK;
+  const fullName = process.env.NETWORK
+    ? payload.userName + ".user._bitcoin-payment." + process.env.NETWORK
+    : payload.userName + ".user._bitcoin-payment";
 
   const data = {
     content: bip21,

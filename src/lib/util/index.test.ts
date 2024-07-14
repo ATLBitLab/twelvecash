@@ -83,6 +83,19 @@ const testCases = [
     expected: "Bip21 URI is greater than 2048 characters",
     shouldThrow: true,
   },
+  {
+    input: {
+      lno: "lno123...xyz",
+      sp: "sp123...xyz",
+      onChain: "bc1p...xyz",
+      custom: [
+        { prefix: "lnurl", value: "lnur123...xyz" },
+        { prefix: "veggie", value: "carrot" },
+      ],
+    },
+    expected: `bitcoin:bc1p...xyz?lno=lno123...xyz&sp=sp123...xyz&lnurl=lnur123...xyz&veggie=carrot`,
+    shouldThrow: false,
+  },
 ];
 test.each(testCases)(
   "createBip21($input) should return $expected",
