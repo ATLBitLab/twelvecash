@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (errMsg !== "") {
+  if (errMsg) {
     return NextResponse.json(
       {
         error: {
