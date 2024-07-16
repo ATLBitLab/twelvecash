@@ -1,7 +1,10 @@
+import SearchForm from "../features/SearchForm";
+
 export default function Check() {
+  const defaultDomain = process.env.DOMAIN ? process.env.DOMAIN : "twelve.cash";
   return (
-      <main className="flex flex-col gap-8 max-w-xl lg:w-1/2 lg:pt-24 lg:pl-6">
-        Check Pay Code Form
+      <main className="mx-auto max-w-2xl flex flex-col gap-9 w-full text-center">
+        <SearchForm defaultDomain={defaultDomain} />
       </main>
   );
 }
