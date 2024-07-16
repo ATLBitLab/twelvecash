@@ -22,19 +22,26 @@ export default function RootLayout({
     <html lang="en" className="p-0 m-0">
       <body className={urbanist.className + " p-0 m-0"}>
         <div className="text-purple-800 bg-12teal bg-gradient-to-b from-purple-800/20 from-0% to-purple-800/0 to-50% h-full flex flex-col justify-between">
-          <header className="border-b border-b-white/40 p-5 flex justify-between items-center gap-4">
-            <div className='flex lex-col items-center'>
-              <TwelveCashLogo />
+          <header className="border-b border-b-white/40 p-5 flex justify-between items-center gap-4 flex-row">
+            <div className="flex flex-col items-center">
+              <div className="scale-75 origin-left sm:scale-100">
+                <TwelveCashLogo />
+              </div>
             </div>
-            <nav className="w-full flex flex-row items-center flex-aut gap-2 justify-end">
+            <nav className="w-full flex flex-row items-center gap-2 justify-end sm:hidden">
+              <Button href="/search" size="small" format="secondary">
+                Check <SearchIcon className="w-6 h-6" />
+              </Button>
+              <Button href="/new" size="small">
+                New <PlusIcon className="w-6 h-6" />
+              </Button>
+            </nav>
+            <nav className="w-full flex-row items-center gap-2 justify-end hidden sm:flex">
               <Button href="/search" size="medium" format="secondary">
                 Check <SearchIcon className="w-6 h-6" />
               </Button>
               <Button href="/new" size="medium">
                 New <PlusIcon className="w-6 h-6" />
-              </Button>
-              <Button href="/new" size="medium" format='outline'>
-                Test
               </Button>
             </nav>
           </header>
