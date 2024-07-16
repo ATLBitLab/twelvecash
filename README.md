@@ -54,12 +54,7 @@ You can use this tool with Cloudflare or Digital OCean DNS. However, if you want
 
 - Setup your domain with DNSSEC - [Docs](https://developers.cloudflare.com/dns/dnssec/)
 - Create an API token in Cloudflare, giving it access to your domain name
-- In the .env file, set `PROVIDER="cloudflare"` and add your Cloudflare API token and domain ID (which you can find by clicking on your domain name in Cloudflare and scrolling down the page)
-
-### Digital Ocean
-
-- Create a personal access token on Digital Ocean and add it to .env.local
-- In the .env file, set `PROVIDER="digitalocean"` and add your Digital Ocean API token
+- In the .env file, add your Cloudflare API token and domain ID (which you can find by clicking on your domain name in Cloudflare and scrolling down the page)
 
 ### Running the Dev Server
 
