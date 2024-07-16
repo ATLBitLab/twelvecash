@@ -23,3 +23,7 @@ body, html {
 a {
   @apply underline;
 }
+
+h1 {
+  @apply text-4xl;
+}

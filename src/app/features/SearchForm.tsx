@@ -14,7 +14,6 @@ type SearchFormProps = {
 
 export default function SearchForm(props:SearchFormProps) {
     const [userNameToCheck, setUserNameToCheck] = useState("stephen@" + props.defaultDomain);
-    const [userNameCheck, setUserNameCheck] = useState<any>({});
 
     const updateUserNameToCheck = (value:string) => {
         setUserNameToCheck(value);
@@ -22,7 +21,7 @@ export default function SearchForm(props:SearchFormProps) {
 
   return (
       <>
-        <h1 className="text-4xl">Check Payment Code</h1>
+        <h1>Check Payment Code</h1>
         <div className={inter.className + " text-purple-800"}>
           <Input value={userNameToCheck} prepend="₿" onChange={updateUserNameToCheck} placeholder={"satoshi@" + props.defaultDomain} />
         </div>
