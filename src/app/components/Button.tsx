@@ -1,22 +1,40 @@
 "use client";
 
 interface ButtonProps {
-    text?: string;
-    format?: "primary" | "secondary";
+    format?: "primary" | "secondary" | "outline";
     disabled?: boolean;
     onClick?: () => void;
+    href?: string;
+    children?: React.ReactNode;
+    size?: "small" | "medium" | "large";
 }
 
 export default function Button(props:ButtonProps){
-    return(
-        <>
-            <button
-                className={`rounded p-4 ${props.format === 'secondary' ? 'bg-yellow-300 text-purple-800' : 'bg-purple-800 text-yellow-300'} ${props.disabled ? 'opacity-75 cursor-not-allowed' : ''}`}
-                disabled={props.disabled}
-                onClick={props.onClick}
-            >
-                {props.text || "Click Here"}
-            </button>
-        </>
-    )
+    const className = `no-underline rounded-lg flex-none flex flex-row items-center text-center justify-center font-semibold transition-all bg-gradient-to-br ${props.format === 'secondary' ? 'bg-yellow-300 from-orange-500/0 to-orange-500/30 hover:to-orange-500/50 text-purple-800' : props.format === 'outline' ? 'from-white/0 to-white/0 border-2 border-purple-800 bg-white/0 hover:bg-white/10' : 'bg-purple-800 from-orange-500/0 to-orange-500/20 hover:to-orange-500/40 text-yellow-300'} ${props.size && props.size === 'large' ? 'p-6 gap-4 text-xl' : props.size && props.size === 'small' ? 'p-2 gap-1 text-base' : 'p-4 gap-2 text-lg'} ${props.disabled ? 'opacity-75 cursor-not-allowed pointer-events-none' : ''}`;
+
+    if(props.href){
+        return(
+            <>
+                <a
+                    className={className}
+                    href={props.href}
+                >
+                        {props.children || "Click Here"}
+                </a>
+            </>
+        )
+    }
+    else {
+        return(
+            <>
+                <button
+                    className={className}
+                    disabled={props.disabled}
+                    onClick={props.onClick}
+                >
+                    {props.children || "Click Here"}
+                </button>
+            </>
+        )
+    }
 }
