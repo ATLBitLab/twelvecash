@@ -20,7 +20,7 @@ export default function User({params}: {params: {user: string}}) {
           <h2 className="h3 text-left">Payment Details</h2>
           <dl className="flex flex-col gap-4">
             <PaymentDetail label="All Data" value="bitcoin:bc1pdfgdfgdfgdfgdfgdfgdfgdfgdfgdfgdfgdfgdfgdfgdfgdfgdfgdfgdfgdfgdfg" uri="bitcoin:bc1p123xyz" />
-            <PaymentDetail label="BOLT 12 Offer Data" value="lno1234567890" uri="bitcoin:bc1p123xyz" />
+            <PaymentDetail label="Offer" value="lno1234567890" uri="bitcoin:bc1p123xyz" />
           </dl>
         </div>
       </main>
