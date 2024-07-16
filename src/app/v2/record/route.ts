@@ -2,6 +2,11 @@ import { Bip21Dict, createBip21, getZodEnumFromObjectKeys } from "@/lib/util";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 const axios = require("axios").default;
+import {
+  uniqueNamesGenerator,
+  adjectives,
+  animals,
+} from "unique-names-generator";
 
 const Custom = z.object({
   prefix: z.string(),
@@ -12,7 +17,7 @@ const domainMap = JSON.parse(process.env.DOMAINS!);
 
 const Payload = z
   .object({
-    userName: z.string(),
+    userName: z.string().optional(),
     domain: getZodEnumFromObjectKeys(domainMap),
     onChain: z.string().optional(),
     label: z.string().optional(),
@@ -72,44 +77,65 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Begin assembling DNS name
-  const fullName = process.env.NETWORK
-    ? payload.userName + ".user._bitcoin-payment." + process.env.NETWORK
-    : payload.userName + ".user._bitcoin-payment";
-
-  const data = {
-    content: bip21,
-    name: `${fullName}.${payload.domain}`,
-    proxied: false,
-    type: "TXT",
-    comment: "Twelve Cash User DNS Update",
-    ttl: 3600,
-  };
-
-  try {
-    const CF_URL = `https://api.cloudflare.com/client/v4/zones/${
-      domainMap[payload.domain]
-    }/dns_records/`;
-    const res = await axios.post(CF_URL, data, config);
-    console.debug(res.data);
-  } catch (error: any) {
-    let message = "Failed to create Paycode.";
-    if (error.response.data.errors[0].code === 81058) {
-      message = "Name is already taken.";
+  let maxRetries = payload.userName ? 1 : 3;
+  let errMsg = "";
+  let userName = payload.userName;
+  for (let i = 0; i < maxRetries; i++) {
+    if (!userName) {
+      userName = uniqueNamesGenerator({
+        dictionaries: [adjectives, animals],
+        length: 2,
+        separator: ".",
+      });
     }
+
+    let fullName = process.env.NETWORK
+      ? `${userName}.user._bitcoin-payment.${process.env.NETWORK}.${payload.domain}`
+      : `${userName}.user._bitcoin-payment.${payload.domain}`;
+
+    const data = {
+      content: bip21,
+      name: fullName,
+      proxied: false,
+      type: "TXT",
+      comment: "Twelve Cash User DNS Update",
+      ttl: 3600,
+    };
+
+    try {
+      const CF_URL = `https://api.cloudflare.com/client/v4/zones/${
+        domainMap[payload.domain]
+      }/dns_records/`;
+      const res = await axios.post(CF_URL, data, config);
+      console.debug(res.data);
+      errMsg = "";
+      break;
+    } catch (error: any) {
+      errMsg = "Failed to create bip353 address";
+      if (error.response.data.errors[0].code === 81058) {
+        errMsg = "Name is already taken.";
+        continue;
+      }
+      break;
+    }
+  }
+
+  if (errMsg) {
     return NextResponse.json(
       {
         error: {
           message: "Failed to update DNS record",
-          errors: [{ message: message }],
+          errors: [{ message: errMsg }],
         },
       },
       { status: 400 }
     );
   }
-
   return NextResponse.json(
-    { message: "Bip353 Address Created" },
+    {
+      message: "Bip353 Address Created",
+      bip353: `${userName}@${process.env.NETWORK}.${payload.domain}`,
+    },
     { status: 201 }
   );
 }
