@@ -24,33 +24,30 @@ export async function POST(req: NextRequest) {
 
   // Begin assembling DNS name
   const fullName = process.env.NETWORK
-    ? localPart + ".user._bitcoin-payment." + process.env.NETWORK
-    : localPart + ".user._bitcoin-payment";
+    ? `${localPart}.user._bitcoin-payment.${process.env.NETWORK}.${process.env.DOMAIN}`
+    : `${localPart}.user._bitcoin-payment.${process.env.DOMAIN}`;
 
-  // First do a DoH lookup to see if a TXT record exists for the given name
+  const CF_URL = `https://api.cloudflare.com/client/v4/zones/${process.env.CF_DOMAIN_ID}/dns_records?name=${fullName}&type=TXT`;
+  // First check to see if this record name already exists
   try {
-    const res = await axios.get(
-      `https://cloudflare-dns.com/dns-query?name=${fullName}.${process.env.DOMAIN}&type=txt`,
-      {
-        headers: {
-          Accept: "application/dns-json",
-        },
-      }
-    );
-    // Answer is an array if there are records, undefined otherwise
-    if (res.data.Answer)
+    const res = await axios.get(CF_URL, {
+      headers: {
+        Content_Type: "application/json",
+        Authorization: `Bearer ${process.env.CF_TOKEN}`,
+      },
+    });
+    if (res.data.result.length > 0) {
       return NextResponse.json(
         { message: "Name is already taken." },
         { status: 409 }
       );
+    }
   } catch (e: any) {
     return NextResponse.json(
       { message: "Failed to lookup paycode." },
       { status: 400 }
     );
   }
-
-  const CF_URL = `https://api.cloudflare.com/client/v4/zones/${process.env.CF_DOMAIN_ID}/dns_records/`;
 
   const config = {
     method: "POST",
@@ -62,7 +59,7 @@ export async function POST(req: NextRequest) {
 
   const data = {
     content: "bitcoin:?lno=" + bolt12,
-    name: `${fullName}.${process.env.DOMAIN}`,
+    name: fullName,
     proxied: false,
     type: "TXT",
     comment: "Twelve Cash User DNS Update",
