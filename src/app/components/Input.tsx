@@ -19,7 +19,7 @@ export default function Input(props:InputProps) {
 
     return (
         <>
-            <div className={`p-4 rounded bg-white flex flex-row justify-between gap-2 ${focus ? 'outline-purple-800 outline-2 outline' : ''}`}>
+            <div className={`p-4 rounded bg-white flex flex-row justify-between gap-2 border-gray-200 border shadow-inner ${focus ? 'outline-purple-800 outline-2 outline' : ''}`}>
                 <div className={`text-black ${!props.prepend ? 'hidden' : ''}`}>
                     {props.prepend}
                 </div>
