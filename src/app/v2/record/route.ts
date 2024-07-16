@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
       userName = uniqueNamesGenerator({
         dictionaries: [adjectives, animals],
         length: 2,
+        separator: ".",
       });
     }
 
