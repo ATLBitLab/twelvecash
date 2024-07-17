@@ -16,6 +16,15 @@ const config: Config = {
       colors: {
         '12teal': '#0FFFC5'
       },
+      animation: {
+        'loading-pulse': 'loading-pulse 1s linear infinite'
+      },
+      keyframes: {
+        'loading-pulse': {
+          '0%': {transform: 'scaleX(0.5) translateX(-100%)'},
+          '100%': {transform: 'scaleX(0.5) translateX(200%)'},
+        }
+      },
     },
   },
   plugins: [],

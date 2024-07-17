@@ -10,7 +10,7 @@ import { parseBip21URI } from "@/lib/util/index";
 import PaymentDetail from "../components/PaymentDetail";
 
 export default function UserDetails(props:Bip353){
-    const [userNameCheck, setUserNameCheck] = useState<any>({});
+    const [userNameCheck, setUserNameCheck] = useState<any>(null);
     const [uri, setURI] = useState<Bip21URI | null>(null);
     const [validPayCode, setValidPayCode] = useState<boolean | null>(null);
     const [multipleRecords, setMultipleRecords] = useState<boolean>(false);
@@ -44,7 +44,9 @@ export default function UserDetails(props:Bip353){
 
     return(
         <>  
-            <h1 className="text-left">{validPayCode ? "Valid" : "Invalid"} Paycode</h1>
+            <h1 className="text-left">
+                {validPayCode ? "Valid Paycode" : validPayCode === null ? "Checking..." : "Invalid Paycode"}
+            </h1>
             <Bip353Box user={props.user} domain={props.domain} />
             <div className="flex flex-row gap-4">
                 <CopyUserLinkButton link={'https://twelve.cash/' + props.user + '@' + props.domain} />
@@ -84,7 +86,12 @@ export default function UserDetails(props:Bip353){
                         )
                     })}
                 </dl>
-                : ``}
+                :
+                <dl className="flex flex-col gap-4">
+                    <PaymentDetail label='Loading' value="&hellip;" uri={'/#'} loading />
+                    <PaymentDetail label='Loading' value="&hellip;" uri={'/#'} loading />
+                </dl>
+                }
             </div>
         </>
     )
