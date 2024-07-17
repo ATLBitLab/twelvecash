@@ -12,7 +12,7 @@ const domainMap = JSON.parse(process.env.DOMAINS!);
 
 const Payload = z
   .object({
-    userName: z.string(),
+    userName: z.string().optional(),
     domain: getZodEnumFromObjectKeys(domainMap),
     onChain: z.string().optional(),
     label: z.string().optional(),

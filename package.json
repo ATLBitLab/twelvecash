@@ -11,11 +11,13 @@
   },
   "dependencies": {
     "@bitcoin-design/bitcoin-icons-react": "^0.1.10",
+    "@hookform/resolvers": "^3.9.0",
     "axios": "^1.6.2",
     "bech32": "^2.0.0",
     "next": "14.1.1",
     "react": "^18",
     "react-dom": "^18",
+    "react-hook-form": "^7.52.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
