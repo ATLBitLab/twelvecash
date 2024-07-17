@@ -63,3 +63,36 @@ export function getZodEnumFromObjectKeys<
   const [firstKey, ...otherKeys] = Object.keys(input) as [R, ...R[]];
   return z.enum([firstKey, ...otherKeys]);
 }
+
+export type Bip21URI = {
+    uri: string,
+    scheme: string;
+    path: string;
+    query: string;
+    params: {[key:string]:string};
+}
+
+export function parseBip21URI(uriString:string):Bip21URI {
+  const regex = /^(?:([^:/?#]+):)?(?:\/\/([^/?#]*))?([^?#]*)(?:\?([^#]*))?(?:#(.*))?/;
+  const match = uriString.match(regex);
+  
+  if (!match) {
+    throw new Error('Invalid URI');
+  }
+
+  let URI:Bip21URI = {
+    uri: uriString,
+    scheme: match[1] || '',
+    path: match[3] || '',
+    query: match[4] || '',
+    params: {},
+  }
+
+  if (URI.query) {
+    URI.params = Object.fromEntries(
+      match[4].split('&').map(pair => pair.split('=').map(decodeURIComponent))
+    );
+  }
+
+  return URI;
+}
