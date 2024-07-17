@@ -9,11 +9,11 @@ import Button from "../components/Button";
 import { parseBip21URI } from "@/lib/util/index";
 import PaymentDetail from "../components/PaymentDetail";
 
-export default function UserDetails(props: Bip353) {
-  const [userNameCheck, setUserNameCheck] = useState<any>({});
-  const [uri, setURI] = useState<Bip21URI | null>(null);
-  const [validPayCode, setValidPayCode] = useState<boolean | null>(null);
-  const [multipleRecords, setMultipleRecords] = useState<boolean>(false);
+export default function UserDetails(props:Bip353){
+    const [userNameCheck, setUserNameCheck] = useState<any>(null);
+    const [uri, setURI] = useState<Bip21URI | null>(null);
+    const [validPayCode, setValidPayCode] = useState<boolean | null>(null);
+    const [multipleRecords, setMultipleRecords] = useState<boolean>(false);
 
   const checkUserName = () => {
     doh
@@ -49,67 +49,57 @@ export default function UserDetails(props: Bip353) {
     return () => clearTimeout(timer); // Cleanup in case the component unmounts
   }, []);
 
-  return (
-    <>
-      <h1 className="text-left">
-        {validPayCode ? "Valid" : "Invalid"} Paycode
-      </h1>
-      <Bip353Box user={props.user} domain={props.domain} />
-      <div className="flex flex-row gap-4">
-        <CopyUserLinkButton
-          link={"https://twelve.cash/" + props.user + "@" + props.domain}
-        />
-        <CopyBip353Button user={props.user} domain={props.domain} />
-      </div>
-      <div className="flex flex-col gap-4 pt-8">
-        <h2 className="h3 text-left">Payment Details</h2>
-        {uri ? (
-          <dl className="flex flex-col gap-4">
-            <PaymentDetail label={"All Data"} value={uri.uri} uri={uri.uri} />
-            {uri.path ? (
-              <PaymentDetail
-                label={"Onchain"}
-                value={uri.path}
-                uri={"bitcoin:" + uri.path}
-              />
-            ) : (
-              ``
-            )}
-            {Object.entries(uri?.params).map(([key, value]) => {
-              let prettyKey = key;
-              let prettyUri = uri.uri;
+    return(
+        <>  
+            <h1 className="text-left">
+                {validPayCode ? "Valid Paycode" : validPayCode === null ? "Checking..." : "Invalid Paycode"}
+            </h1>
+            <Bip353Box user={props.user} domain={props.domain} />
+            <div className="flex flex-row gap-4">
+                <CopyUserLinkButton link={'https://twelve.cash/' + props.user + '@' + props.domain} />
+                <CopyBip353Button user={props.user} domain={props.domain} />
+            </div>
+            <div className="flex flex-col gap-4 pt-8">
+                <h2 className="h3 text-left">Payment Details</h2>
+                {uri ?
+                <dl className="flex flex-col gap-4">
+                    <PaymentDetail label={'All Data'} value={uri.uri} uri={uri.uri} />
+                    {uri.path ?
+                        <PaymentDetail label={'Onchain'} value={uri.path} uri={'bitcoin:' + uri.path} />
+                    : ``}
+                    {Object.entries(uri?.params).map(([key, value]) => {
+                        let prettyKey = key;
+                        let prettyUri = uri.uri;
 
-              switch (key) {
-                case "lno":
-                  prettyKey = "Offer";
-                  prettyUri = `bitcoin:?lno=${value}`;
-                  break;
-                case "sp":
-                  prettyKey = "Silent Payment";
-                  prettyUri = `bitcoin:?sp=${value}`;
-                  break;
-                case "label":
-                  prettyKey = "Label";
-                  break;
-                case "lnurl":
-                  prettyKey = "LNURL";
-                  prettyUri = `lightning:${value}`;
-                  break;
-              }
-              return (
-                <PaymentDetail
-                  label={prettyKey}
-                  value={value}
-                  uri={prettyUri}
-                  key={key}
-                />
-              );
-            })}
-          </dl>
-        ) : (
-          ``
-        )}
-      </div>
-    </>
-  );
+                        switch(key) {
+                            case 'lno':
+                                prettyKey = 'Offer';
+                                prettyUri = `bitcoin:?lno=${value}`;
+                                break;
+                            case 'sp':
+                                prettyKey = 'Silent Payment';
+                                prettyUri = `bitcoin:?sp=${value}`;
+                                break;
+                            case 'label':
+                                prettyKey = 'Label';
+                                break;
+                            case 'lnurl':
+                                prettyKey = 'LNURL';
+                                prettyUri = `lightning:${value}`;
+                                break;
+                        }
+                        return(
+                            <PaymentDetail label={prettyKey} value={value} uri={prettyUri} key={key} />
+                        )
+                    })}
+                </dl>
+                :
+                <dl className="flex flex-col gap-4">
+                    <PaymentDetail label='Loading' value="&hellip;" uri={'/#'} loading />
+                    <PaymentDetail label='Loading' value="&hellip;" uri={'/#'} loading />
+                </dl>
+                }
+            </div>
+        </>
+    )
 }
