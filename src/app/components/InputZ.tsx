@@ -9,6 +9,7 @@ interface InputProps {
   prepend?: string;
   label?: string;
   description?: string;
+  hidden?: boolean;
 }
 
 export default function Input(props: InputProps) {
@@ -16,7 +17,7 @@ export default function Input(props: InputProps) {
 
   return (
     <>
-      <div className="flex flex-col gap-2">
+      <div className={`flex flex-col gap-2 ${props.hidden && "hidden"}`}>
         {props.label ? (
           <label className="font-semibold text-lg">{props.label}</label>
         ) : (

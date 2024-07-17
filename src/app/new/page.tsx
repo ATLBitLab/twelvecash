@@ -46,7 +46,6 @@ export default function New() {
       });
       return;
     }
-    console.debug("data", data);
     try {
       const res = await fetch("/v2/record", {
         method: "POST",
@@ -79,31 +78,30 @@ export default function New() {
         placeholder="sp123...xyz"
         register={register}
       />
-      {optionsExpanded && (
-        <>
-          <Input
-            name="onChain"
-            label="Onchain Address"
-            description="Address re-use is discouraged for privacy. Consider using a silent payment address instead."
-            placeholder="bc123...xyz"
-            register={register}
-          />
-          <Input
-            name="label"
-            label="Label"
-            description="Not all wallets support this. It allows a payee to categorize an address with a name."
-            placeholder="Your Name / Nym"
-            register={register}
-          />
-          <Input
-            name="lnurl"
-            label="LNURL Pay (or Lightning Address)"
-            description="You can add in LNURL information for services that do not support these other methods."
-            placeholder="lnurl123...xyz"
-            register={register}
-          />
-        </>
-      )}
+      <Input
+        name="onChain"
+        label="Onchain Address"
+        description="Address re-use is discouraged for privacy. Consider using a silent payment address instead."
+        placeholder="bc123...xyz"
+        hidden={!optionsExpanded}
+        register={register}
+      />
+      <Input
+        name="label"
+        label="Label"
+        description="Not all wallets support this. It allows a payee to categorize an address with a name."
+        placeholder="Your Name / Nym"
+        hidden={!optionsExpanded}
+        register={register}
+      />
+      <Input
+        name="lnurl"
+        label="LNURL Pay (or Lightning Address)"
+        description="You can add in LNURL information for services that do not support these other methods."
+        placeholder="lnurl123...xyz"
+        hidden={!optionsExpanded}
+        register={register}
+      />
       <div className="flex justify-between">
         <Button
           format="secondary"
