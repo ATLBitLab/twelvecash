@@ -1,13 +1,9 @@
 import { Inter } from 'next/font/google'
+import type { Bip353 } from '@/lib/util';
 
 const inter = Inter({ subsets: ['latin'] })
 
-type Bip353BoxProps = {
-    user: string;
-    domain: string;
-}
-
-export default function Bip353Box(props:Bip353BoxProps){
+export default function Bip353Box(props:Bip353){
     return(
         <>
         <div className="bg-blue-900 text-white text-4xl p-9 rounded-xl font-light overflow-hidden">

@@ -9,7 +9,7 @@ type CopyUserLinkButtonProps = {
 export default function CopyUserLinkButton(props:CopyUserLinkButtonProps){
     return(
         <>
-          <Button format="secondary" wide onClick={()=>{alert('TODO: Copy to Clipboard - ' + props.link)}}>
+          <Button size="large" format="secondary" wide onClick={()=>{navigator.clipboard.writeText(props.link)}}>
             Share Link <LinkIcon className="w-6 h-6" />
           </Button>
         </>

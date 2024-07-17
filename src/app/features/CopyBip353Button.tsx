@@ -1,15 +1,12 @@
 "use client";
 import Button from "../components/Button";
 import { CopyIcon } from '@bitcoin-design/bitcoin-icons-react/filled';
+import type { Bip353 } from "@/lib/util";
 
-type CopyBip353ButtonProps = {
-    bip353: string;
-}
-
-export default function CopyBip353Button(props:CopyBip353ButtonProps){
+export default function CopyBip353Button(props:Bip353){
     return(
         <>
-            <Button wide onClick={()=>{alert('TODO: Copy to Clipboard - ' + props.bip353)}}>
+            <Button size="large" wide onClick={()=>{navigator.clipboard.writeText(props.user + "@" + props.domain)}}>
                 Copy <CopyIcon className="w-6 h-6" />
             </Button>
         </>

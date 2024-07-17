@@ -28,6 +28,11 @@ export type Bip21Dict = {
   custom?: Custom[];
 };
 
+export type Bip353 = {
+  user: string;
+  domain: string;
+};
+
 export const createBip21 = (payload: Bip21Dict): string => {
   const base = payload.onChain ? `bitcoin:${payload.onChain}` : "bitcoin:";
   const url = new URL(base);
