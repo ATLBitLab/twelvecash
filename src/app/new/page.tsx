@@ -13,7 +13,6 @@ import { useRouter } from "next/navigation";
 
 export default function New() {
   const [optionsExpanded, setOptionsExpanded] = useState(false);
-  // const [bip353, setBip353] = useState<string>("");
   const router = useRouter();
 
   const {
