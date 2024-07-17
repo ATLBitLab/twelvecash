@@ -18,7 +18,6 @@ const envSchema = z
   .object({
     NETWORK: z.enum(["", "testnet", "regtest"]),
     DOMAINS: z.record(z.string(), z.string()),
-    PROVIDER: z.enum(["cloudflare"]),
     CF_TOKEN: z.string(),
     NODE_ENV: z.enum(["development", "test", "production"]),
   })

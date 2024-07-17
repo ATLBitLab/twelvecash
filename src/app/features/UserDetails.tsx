@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import * as doh from '../../lib/dnssec-prover/doh_lookup.js';
+import * as doh from "../../lib/dnssec-prover/doh_lookup.js";
 import Bip353Box from "../components/Bip353Box";
 import type { Bip353, Bip21URI } from "@/lib/util/index.js";
 import CopyUserLinkButton from "./CopyUserLinkButton";
@@ -15,32 +15,39 @@ export default function UserDetails(props:Bip353){
     const [validPayCode, setValidPayCode] = useState<boolean | null>(null);
     const [multipleRecords, setMultipleRecords] = useState<boolean>(false);
 
-    const checkUserName = ()=>{
-        doh.lookup_doh(`${props.user}.user._bitcoin-payment.${props.domain}`, 'TXT', 'https://dns.google/dns-query').then((response)=>{  
-            console.log(response);
-            let validation = JSON.parse(response)
-            setUserNameCheck(validation);
+  const checkUserName = () => {
+    doh
+      .lookup_doh(
+        `${props.user}.user._bitcoin-payment.${props.domain}`,
+        "TXT",
+        "https://dns.google/dns-query"
+      )
+      .then((response) => {
+        console.log(response);
+        let validation = JSON.parse(response);
+        setUserNameCheck(validation);
 
-            if(validation.valid_from && validation.verified_rrs.length === 1) {
-                setValidPayCode(true);
-                let parsedURI = parseBip21URI(validation.verified_rrs[0].contents);
-                console.log(parsedURI)
-                setURI(parsedURI);
-            }
-            else if(validation.valid_from && validation.verified_rrs.length > 1) {
-                setValidPayCode(false);
-                setMultipleRecords(true);
-            }
-            else setValidPayCode(false);
-        });
-    }
+        if (validation.valid_from && validation.verified_rrs.length === 1) {
+          setValidPayCode(true);
+          let parsedURI = parseBip21URI(validation.verified_rrs[0].contents);
+          console.log(parsedURI);
+          setURI(parsedURI);
+        } else if (
+          validation.valid_from &&
+          validation.verified_rrs.length > 1
+        ) {
+          setValidPayCode(false);
+          setMultipleRecords(true);
+        } else setValidPayCode(false);
+      });
+  };
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            checkUserName();
-        }, 0);
-        return () => clearTimeout(timer); // Cleanup in case the component unmounts
-    }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      checkUserName();
+    }, 0);
+    return () => clearTimeout(timer); // Cleanup in case the component unmounts
+  }, []);
 
     return(
         <>  

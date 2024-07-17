@@ -1,7 +1,7 @@
-import { Inter } from 'next/font/google'
-import type { Bip353 } from '@/lib/util';
+import { Inter } from "next/font/google";
+import type { Bip353 } from "@/lib/util";
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ["latin"] });
 
 type Bip353BoxProps = {
     users: Bip353[];
