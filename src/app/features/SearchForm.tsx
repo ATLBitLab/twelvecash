@@ -26,7 +26,7 @@ export default function SearchForm(props:SearchFormProps) {
           <Input value={userNameToCheck} prepend="₿" onChange={updateUserNameToCheck} placeholder={"satoshi@" + props.defaultDomain} />
         </div>
         <div className="flex flex-row items-center justify-center">
-            <Button href={"/" + userNameToCheck}>Check Pay Code <SearchIcon className="w-6 h-6" /></Button>
+            <Button href={"/" + userNameToCheck} size="large">Check Pay Code <SearchIcon className="w-6 h-6" /></Button>
         </div>
       </>
   );

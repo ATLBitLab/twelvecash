@@ -54,7 +54,7 @@ export default function UserDetails(props:Bip353){
             <h1 className="text-left">
                 {validPayCode ? "Valid Paycode" : validPayCode === null ? "Checking..." : "Invalid Paycode"}
             </h1>
-            <Bip353Box user={props.user} domain={props.domain} />
+            <Bip353Box users={[{user:props.user, domain: props.domain}]} />
             <div className="flex flex-row gap-4">
                 <CopyUserLinkButton link={'https://twelve.cash/' + props.user + '@' + props.domain} />
                 <CopyBip353Button user={props.user} domain={props.domain} />
