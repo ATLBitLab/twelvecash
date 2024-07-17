@@ -9,10 +9,13 @@ import {
   CaretDownIcon,
 } from "@bitcoin-design/bitcoin-icons-react/filled";
 import { z } from "zod";
+import { useRouter } from "next/navigation";
 
 export default function New() {
   const [optionsExpanded, setOptionsExpanded] = useState(false);
-  const [bip353, setBip353] = useState<string>("");
+  // const [bip353, setBip353] = useState<string>("");
+  const router = useRouter();
+
   const {
     register,
     handleSubmit,
@@ -54,7 +57,7 @@ export default function New() {
         body: JSON.stringify(data),
       });
       const json = await res.json();
-      console.debug("json", json);
+      router.push(`/${json.bip353}`);
     } catch (e: any) {
       console.error(e);
     }
