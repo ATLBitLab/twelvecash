@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(
     {
       message: "Bip353 Address Created",
-      bip353: `${userName}@${process.env.NETWORK}.${payload.domain}`,
+      bip353: `${userName}@${process.env.NETWORK ? process.env.NETWORK + "." : ''}${payload.domain}`,
     },
     { status: 201 }
   );
