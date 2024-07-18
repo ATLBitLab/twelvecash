@@ -13,7 +13,7 @@ export const lnAddrToLNURL = (lnaddr: string) => {
   return lnurl;
 };
 
-type Custom = {
+export type Custom = {
   prefix: string;
   value: string;
 };
