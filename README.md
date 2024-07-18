@@ -2,24 +2,32 @@
 
 # Twelve Cash
 
-> :warning: **Caution:** This is alpha software. Seeking feedback and reviews.
-
 This is an attempt to encode bitcoin payment instructions, specifically BOLT 12 offers, into DNS records. For users, this means something that looks like `my-name@twelve.cash`, but resolves to a BOLT12 offer when a BOLT12 supporting wallet attempts to pay to it.
 
-This work was inspired by Bastien Teinturier's post [Lightning Address in a Bolt 12 world](https://lists.linuxfoundation.org/pipermail/lightning-dev/2023-November/004204.html). From there, we have incorporated further ideas from Matt Corallo and Bastien Teinturier's BIP Draft for [DNS Payment Instructions](https://github.com/bitcoin/bips/pull/1551/files).
-
-This does not currently support DNSSEC as outlined in the BIP draft, but adding that is part of our roadmap.
+This is an implementation of BIP-353. Inititally inspired by Bastien Teinturier's post [Lightning Address in a Bolt 12 world](https://lists.linuxfoundation.org/pipermail/lightning-dev/2023-November/004204.html).
 
 ## How to Use
 
 ### Create a User Name
 
-Hit the API endpoint `https://twelve.cash/record` with a POST request containing the payload:
+Hit the API endpoint `https://twelve.cash/v2/record` with a POST request containing the payload:
 
 ```
 {
-    "localPart": "satoshi",
-    "bolt12": "lno1...9uuq"
+    "domain": "twelve.cash",
+    "lno": "lno123...xyz",
+    "sp": "sp123...xyz",
+    "onChain": "bc1p...xyz",
+    "custom": [
+        {
+            "prefix": "lnurl",
+            "value": "lnur123...xyz"
+        },
+        {
+            "prefix": "mystory",
+            "value": "Bitcoin ipsum dolor sit amet."
+        }
+    ]
 }
 ```
 
@@ -27,11 +35,11 @@ Hit the API endpoint `https://twelve.cash/record` with a POST request containing
 
 You can verify that this worked by opening a shell and running:
 
-`dig txt satoshi.user._bitcoin-payment.twelve.cash`
+`dig txt stephen.user._bitcoin-payment.twelve.cash`
 
 The expected output should be:
 
-`satoshi.user._bitcoin-payment.twelve.cash. 3600 IN TXT "bitcoin:?lno=lno1pgtyymmvwscnygzsv9uk6etwwssyzerywfjhxuckyypme4su43qu44v09r28p6whddr62zkyuj68ha68kky2za4zrdu9uuq"`
+`stephen.user._bitcoin-payment.twelve.cash. 3600 IN TXT "bitcoin:?lno=lno1pgg8getnw3q8gam9d3mx2tnrv9eks93pqw7dv89vg89dtreg63cwn4mtg7js438yk3alw3a43zshdgsm0p08q"`
 
 ## Validate a User Name
 
@@ -48,7 +56,7 @@ For this, we rely on the [dnssec-prover tool](https://github.com/TheBlueMatt/dns
 
 ## Development
 
-You can use this tool with Cloudflare or Digital OCean DNS. However, if you want to properly implement human-readable addresses BIP, you will need to use Cloudflare sicne they support DNSSEC.
+You can use this tool with Cloudflare DNS API.
 
 ### Cloudflare
 
