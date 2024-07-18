@@ -30,7 +30,7 @@ export default function Bip353Box(props:Bip353BoxProps){
                     
                         <span className={`whitespace-nowrap overflow-ellipsis overflow-hidden w-full text-left relative`}>
                         {props.users.map((user, index) => (
-                            <span className={`absolute animate-slide-up-${index+1}`}>
+                            <span className={`absolute animate-slide-up-${index+1}`} key={index}>
                                 {user.user}
                             </span>
                         ))}
