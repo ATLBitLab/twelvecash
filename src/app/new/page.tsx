@@ -10,6 +10,7 @@ import {
 } from "@bitcoin-design/bitcoin-icons-react/filled";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
+import { lnAddrToLNURL } from "@/lib/util";
 
 export default function New() {
   const [optionsExpanded, setOptionsExpanded] = useState(false);
@@ -45,6 +46,13 @@ export default function New() {
         message: "At least one payment option must be provided.",
       });
       return;
+    }
+
+    if (data.lnurl) {
+      // If it's a lightning address, try to convert it to lnurl
+      try {
+        data.lnurl = lnAddrToLNURL(data.lnurl);
+      } catch (e) {}
     }
     try {
       const res = await fetch("/v2/record", {

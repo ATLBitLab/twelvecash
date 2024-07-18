@@ -1,17 +1,15 @@
 import { bech32 } from "bech32";
 import { z } from "zod";
 
-export const lnaddrToLNURL = (lnaddr: string) => {
+export const lnAddrToLNURL = (lnaddr: string) => {
   const [username, domain] = lnaddr.split("@");
   if (!username || !domain)
     throw new Error("Failed to parse lightning address");
 
   const decodedLnurl = `https://${domain}/.well-known/lnurlp/${username}`;
-  console.debug("decodedLnurl", decodedLnurl);
 
   let words = bech32.toWords(Buffer.from(decodedLnurl, "utf8"));
   const lnurl = bech32.encode("lnurl", words);
-  console.debug("lnurl", lnurl);
   return lnurl;
 };
 
@@ -65,32 +63,33 @@ export function getZodEnumFromObjectKeys<
 }
 
 export type Bip21URI = {
-    uri: string,
-    scheme: string;
-    path: string;
-    query: string;
-    params: {[key:string]:string};
-}
+  uri: string;
+  scheme: string;
+  path: string;
+  query: string;
+  params: { [key: string]: string };
+};
 
-export function parseBip21URI(uriString:string):Bip21URI {
-  const regex = /^(?:([^:/?#]+):)?(?:\/\/([^/?#]*))?([^?#]*)(?:\?([^#]*))?(?:#(.*))?/;
+export function parseBip21URI(uriString: string): Bip21URI {
+  const regex =
+    /^(?:([^:/?#]+):)?(?:\/\/([^/?#]*))?([^?#]*)(?:\?([^#]*))?(?:#(.*))?/;
   const match = uriString.match(regex);
-  
+
   if (!match) {
-    throw new Error('Invalid URI');
+    throw new Error("Invalid URI");
   }
 
-  let URI:Bip21URI = {
+  let URI: Bip21URI = {
     uri: uriString,
-    scheme: match[1] || '',
-    path: match[3] || '',
-    query: match[4] || '',
+    scheme: match[1] || "",
+    path: match[3] || "",
+    query: match[4] || "",
     params: {},
-  }
+  };
 
   if (URI.query) {
     URI.params = Object.fromEntries(
-      match[4].split('&').map(pair => pair.split('=').map(decodeURIComponent))
+      match[4].split("&").map((pair) => pair.split("=").map(decodeURIComponent))
     );
   }
 
