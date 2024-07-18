@@ -5,7 +5,6 @@ import TwelveCashLogo from './components/TwelveCashLogo'
 import Button from './components/Button'
 import { PlusIcon, SearchIcon } from '@bitcoin-design/bitcoin-icons-react/filled'
 
-const inter = Inter({ subsets: ['latin'] })
 const urbanist = Urbanist({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
@@ -18,6 +17,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  
   return (
     <html lang="en" className="p-0 m-0">
       <body className={urbanist.className + " p-0 m-0"}>
