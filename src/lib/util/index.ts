@@ -28,6 +28,11 @@ export type Bip21Dict = {
   custom?: Custom[];
 };
 
+export type Bip353 = {
+  user: string;
+  domain: string;
+};
+
 export const createBip21 = (payload: Bip21Dict): string => {
   const base = payload.onChain ? `bitcoin:${payload.onChain}` : "bitcoin:";
   const url = new URL(base);
@@ -57,4 +62,37 @@ export function getZodEnumFromObjectKeys<
 >(input: TI): z.ZodEnum<[R, ...R[]]> {
   const [firstKey, ...otherKeys] = Object.keys(input) as [R, ...R[]];
   return z.enum([firstKey, ...otherKeys]);
+}
+
+export type Bip21URI = {
+    uri: string,
+    scheme: string;
+    path: string;
+    query: string;
+    params: {[key:string]:string};
+}
+
+export function parseBip21URI(uriString:string):Bip21URI {
+  const regex = /^(?:([^:/?#]+):)?(?:\/\/([^/?#]*))?([^?#]*)(?:\?([^#]*))?(?:#(.*))?/;
+  const match = uriString.match(regex);
+  
+  if (!match) {
+    throw new Error('Invalid URI');
+  }
+
+  let URI:Bip21URI = {
+    uri: uriString,
+    scheme: match[1] || '',
+    path: match[3] || '',
+    query: match[4] || '',
+    params: {},
+  }
+
+  if (URI.query) {
+    URI.params = Object.fromEntries(
+      match[4].split('&').map(pair => pair.split('=').map(decodeURIComponent))
+    );
+  }
+
+  return URI;
 }
