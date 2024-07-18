@@ -56,8 +56,12 @@ export default function UserDetails(props:Bip353){
             </h1>
             <Bip353Box users={[{user:props.user, domain: props.domain}]} />
             <div className={`flex flex-row gap-4 ${!uri ? 'pointer-events-none opacity-75' : ''}`}>
-                <CopyUserLinkButton link={'https://twelve.cash/' + props.user + '@' + props.domain} />
-                <CopyBip353Button user={props.user} domain={props.domain} />
+                <div className="flex w-1/2">
+                  <CopyUserLinkButton link={'https://twelve.cash/' + props.user + '@' + props.domain} />
+                </div>
+                <div className="flex w-1/2">
+                  <CopyBip353Button user={props.user} domain={props.domain} />
+                </div>
             </div>
             <div className="flex flex-col gap-4 pt-8">
                 <h2 className="h3 text-left">Payment Details</h2>

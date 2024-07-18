@@ -50,8 +50,12 @@ export default function NewUser({ params }: { params: { user: string } }){
                 <p className="text-xl">Your pay code is created, but it may take 5-10 minutes for the pay code to work. Enjoy!</p>
                 <Bip353Box users={[{user, domain}]} />
                 <div className={`flex flex-row gap-4`}>
-                    <CopyUserLinkButton link={'https://twelve.cash/' + user + '@' + domain} />
-                    <CopyBip353Button user={user} domain={domain} />
+                    <div className="flex w-1/2">
+                        <CopyUserLinkButton link={'https://twelve.cash/' + user + '@' + domain} />
+                    </div>
+                    <div className="flex w-1/2">
+                        <CopyBip353Button user={user} domain={domain} />
+                    </div>
                 </div>
             </main>
         </>
