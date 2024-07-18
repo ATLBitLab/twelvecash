@@ -20,7 +20,7 @@ export default function UserDetails(props:Bip353){
       .lookup_doh(
         `${props.user}.user._bitcoin-payment.${props.domain}`,
         "TXT",
-        "https://dns.google/dns-query"
+        "https://1.1.1.1/dns-query"
       )
       .then((response) => {
         console.log(response);
@@ -55,7 +55,7 @@ export default function UserDetails(props:Bip353){
                 {validPayCode ? "Valid Paycode" : validPayCode === null ? "Checking..." : "Invalid Paycode"}
             </h1>
             <Bip353Box users={[{user:props.user, domain: props.domain}]} />
-            <div className="flex flex-row gap-4">
+            <div className={`flex flex-row gap-4 ${!uri ? 'pointer-events-none opacity-75' : ''}`}>
                 <CopyUserLinkButton link={'https://twelve.cash/' + props.user + '@' + props.domain} />
                 <CopyBip353Button user={props.user} domain={props.domain} />
             </div>
@@ -94,10 +94,15 @@ export default function UserDetails(props:Bip353){
                     })}
                 </dl>
                 :
+                validPayCode !== false ?
                 <dl className="flex flex-col gap-4">
                     <PaymentDetail label='Loading' value="&hellip;" uri={'/#'} loading />
                     <PaymentDetail label='Loading' value="&hellip;" uri={'/#'} loading />
                 </dl>
+                :
+                <p className="text-left text-lg">
+                  Sorry, no valid payment details were found. If you just created this Pay Code, try waiting a few minutes so the DNS records can propagate.
+                </p>
                 }
             </div>
         </>

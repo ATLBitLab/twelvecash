@@ -55,7 +55,7 @@ export default function New() {
         body: JSON.stringify(data),
       });
       const json = await res.json();
-      router.push(`/${json.bip353}`);
+      router.push(`/new/${json.bip353}`);
     } catch (e: any) {
       console.error(e);
     }
