@@ -35,11 +35,13 @@ export function get_next_query(proof_builder: WASMProofBuilder): Uint8Array | un
 */
 export function get_unverified_proof(proof_builder: WASMProofBuilder): Uint8Array | undefined;
 /**
-* Verifies an RFC 9102-formatted proof and returns the [`VerifiedRRStream`] in JSON form.
+* Verifies an RFC 9102-formatted proof and returns verified records matching the given name
+* (resolving any C/DNAMEs as required).
 * @param {Uint8Array} stream
+* @param {string} name_to_resolve
 * @returns {string}
 */
-export function verify_byte_stream(stream: Uint8Array): string;
+export function verify_byte_stream(stream: Uint8Array, name_to_resolve: string): string;
 /**
 */
 export class WASMProofBuilder {
@@ -55,7 +57,7 @@ export interface InitOutput {
   readonly process_query_response: (a: number, b: number, c: number) => void;
   readonly get_next_query: (a: number, b: number) => void;
   readonly get_unverified_proof: (a: number, b: number) => void;
-  readonly verify_byte_stream: (a: number, b: number, c: number) => void;
+  readonly verify_byte_stream: (a: number, b: number, c: number, d: number, e: number) => void;
   readonly __wbindgen_malloc: (a: number, b: number) => number;
   readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_add_to_stack_pointer: (a: number) => number;

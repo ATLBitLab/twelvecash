@@ -46,7 +46,7 @@ export async function lookup_doh(domain, ty, doh_endpoint) {
 				} else if (queries_pending == 0) {
 					var proof = wasm.get_unverified_proof(builder);
 					if (proof != null) {
-						var result = wasm.verify_byte_stream(proof);
+						var result = wasm.verify_byte_stream(proof, domain);
 						return JSON.stringify(JSON.parse(result), null, 1);
 					} else {
 						return "{\"error\":\"Failed to build proof\"}";
