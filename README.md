@@ -39,7 +39,7 @@ You can verify that this worked by opening a shell and running:
 
 The expected output should be:
 
-`satoshi.user._bitcoin-payment.twelve.cash. 3600 IN TXT "bitcoin:?lno=lno1pgg8getnw3q8gam9d3mx2tnrv9eks93pqw7dv89vg89dtreg63cwn4mtg7js438yk3alw3a43zshdgsm0p08q"`
+`stephen.user._bitcoin-payment.twelve.cash. 3600 IN TXT "bitcoin:?lno=lno1pgg8getnw3q8gam9d3mx2tnrv9eks93pqw7dv89vg89dtreg63cwn4mtg7js438yk3alw3a43zshdgsm0p08q"`
 
 ## Validate a User Name
 
