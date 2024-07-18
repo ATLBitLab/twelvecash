@@ -35,7 +35,7 @@ export default function New() {
       domain: z.string(),
     }),
     defaultValues: {
-      domain: "12cash.dev",
+      domain: "twelve.cash",
     },
   });
 
