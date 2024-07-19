@@ -76,9 +76,13 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+  const CF_URL = `https://api.cloudflare.com/client/v4/zones/${
+    domainMap[payload.domain]
+  }/dns_records`;
 
   let maxRetries = payload.userName ? 1 : 3;
   let errMsg = "";
+  let status = 400;
   let userName = payload.userName;
   for (let i = 0; i < maxRetries; i++) {
     if (!userName) {
@@ -93,6 +97,25 @@ export async function POST(req: NextRequest) {
       ? `${userName}.user._bitcoin-payment.${process.env.NETWORK}.${payload.domain}`
       : `${userName}.user._bitcoin-payment.${payload.domain}`;
 
+    // First check to see if this record name already exists
+    try {
+      const res = await axios.get(`${CF_URL}?name=${fullName}&type=TXT`, {
+        headers: {
+          Content_Type: "application/json",
+          Authorization: `Bearer ${process.env.CF_TOKEN}`,
+        },
+      });
+      if (res.data.result.length > 0) {
+        errMsg = "Name is already taken.";
+        status = 409;
+        continue;
+      }
+    } catch (e: any) {
+      errMsg = "Failed to check for existing paycode.";
+      status = 400;
+      continue;
+    }
+
     const data = {
       content: bip21,
       name: fullName,
@@ -103,19 +126,18 @@ export async function POST(req: NextRequest) {
     };
 
     try {
-      const CF_URL = `https://api.cloudflare.com/client/v4/zones/${
-        domainMap[payload.domain]
-      }/dns_records/`;
       const res = await axios.post(CF_URL, data, config);
       console.debug(res.data);
       errMsg = "";
       break;
     } catch (error: any) {
-      errMsg = "Failed to create bip353 address";
       if (error.response.data.errors[0].code === 81058) {
         errMsg = "Name is already taken.";
+        status = 409;
         continue;
       }
+      errMsg = "Failed to create bip353 address";
+      status = 400;
       break;
     }
   }
@@ -128,13 +150,15 @@ export async function POST(req: NextRequest) {
           errors: [{ message: errMsg }],
         },
       },
-      { status: 400 }
+      { status: status }
     );
   }
   return NextResponse.json(
     {
       message: "Bip353 Address Created",
-      bip353: `${userName}@${process.env.NETWORK ? process.env.NETWORK + "." : ''}${payload.domain}`,
+      bip353: `${userName}@${
+        process.env.NETWORK ? process.env.NETWORK + "." : ""
+      }${payload.domain}`,
     },
     { status: 201 }
   );
