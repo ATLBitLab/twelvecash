@@ -19,6 +19,8 @@ const envSchema = z
     NETWORK: z.enum(["", "testnet", "regtest"]),
     DOMAINS: z.record(z.string(), z.string()),
     CF_TOKEN: z.string(),
+    DATABASE_URL: z.string(),
+    JWT_SECRET: z.string(),
     NODE_ENV: z.enum(["development", "test", "production"]),
   })
   .refine(

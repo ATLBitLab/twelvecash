@@ -1,0 +1,104 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  lastLogin       DateTime?
+  nostrPublicKey  String?   @unique
+  lnNodePublicKey String?   @unique
+  apiKey          String    @default(uuid())
+  payCode         PayCode[]
+  Invoice         Invoice[]
+}
+
+model UserAuth {
+  id            String   @id @default(uuid())
+  createdAt     DateTime @default(now())
+  challengeHash String   @unique
+}
+
+model PayCode {
+  id        String         @id @default(uuid())
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  expires   DateTime?
+  redeemed  Boolean        @default(false) // use PayCodeStatus?
+  label     String?
+  domain    String
+  userName  String // should not be unique so people can get an expired username
+  params    PayCodeParam[]
+  user      User?          @relation(fields: [userId], references: [id])
+  userId    String?
+ // single or array? one can time out... but could make a new PayCode per request
+ // would check valid paycodes by looking at invoice redemption status
+  invoices  Invoice[]
+}
+
+enum PayCodeStatus {
+    PENDING // or reedemed in invoice?
+    ACTIVE
+    EXPIRED // would need to ensure the actual records are removed, cron job could set this
+    REVOKED
+}
+
+model PayCodeParam {
+  id               String           @id @default(uuid())
+  prefix           String
+  value            String
+  payCodeParamType PayCodeParamType
+  payCode          PayCode          @relation(fields: [payCodeId], references: [id])
+  payCodeId        String
+}
+
+enum PayCodeParamType {
+  ONCHAIN
+  LNO
+  SP
+  LNURL
+  CUSTOM
+}
+
+model Invoice {
+  id                String            @id @default(uuid())
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  confirmedAt       DateTime?
+  maxAgeSeconds     Int
+  description       String
+  transactionStatus TransactionStatus
+  invoiceKind       InvoiceKind
+  hash              String            @unique
+  bolt11            String?
+  bolt12            String?
+  mSatsTarget       Int
+  mSatsSettled      Int?
+//   redeemed          Boolean           @default(false)
+  user              User?             @relation(fields: [userId], references: [id])
+  userId            String?
+  payCode           PayCode           @relation(fields: [payCodeId], references: [id])
+  payCodeId         String
+}
+
+enum InvoiceKind {
+  PURCHASE
+  RENEWAL
+}
+
+enum TransactionStatus {
+  SETTLED
+  PENDING
+  FAILED
+  CANCELED
+  EXPIRED
+}
