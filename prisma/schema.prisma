@@ -34,6 +34,7 @@ model PayCode {
   updatedAt DateTime       @updatedAt
   expires   DateTime?
   redeemed  Boolean        @default(false) // use PayCodeStatus?
+  status    PayCodeStatus
   label     String?
   domain    String
   userName  String // should not be unique so people can get an expired username
@@ -54,15 +55,16 @@ enum PayCodeStatus {
 
 model PayCodeParam {
   id               String           @id @default(uuid())
-  prefix           String
   value            String
-  payCodeParamType PayCodeParamType
+  type             PayCodeParamType
   payCode          PayCode          @relation(fields: [payCodeId], references: [id])
   payCodeId        String
 }
 
+
 enum PayCodeParamType {
   ONCHAIN
+  LABEL
   LNO
   SP
   LNURL

@@ -1,5 +1,7 @@
+import { PayCodeParamType } from "@prisma/client";
 import { bech32 } from "bech32";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
 export const lnaddrToLNURL = (lnaddr: string) => {
   const [username, domain] = lnaddr.split("@");
@@ -33,17 +35,47 @@ export type Bip353 = {
   domain: string;
 };
 
-export const createBip21 = (payload: Bip21Dict): string => {
-  const base = payload.onChain ? `bitcoin:${payload.onChain}` : "bitcoin:";
+// export const createBip21 = (payload: Bip21Dict): string => {
+//   const base = payload.onChain ? `bitcoin:${payload.onChain}` : "bitcoin:";
+//   const url = new URL(base);
+
+//   if (payload.label && payload.onChain)
+//     url.searchParams.append("label", payload.label);
+//   if (payload.lno) url.searchParams.append("lno", payload.lno);
+//   if (payload.sp) url.searchParams.append("sp", payload.sp);
+
+//   if (Array.isArray(payload.custom)) {
+//     payload.custom.forEach((item: Custom) => {
+//       url.searchParams.append(item.prefix, item.value);
+//     });
+//   }
+
+//   const bip21 = url.toString();
+//   if (bip21 === "bitcoin:") throw new Error("No payment option provided");
+//   if (bip21.length > 2048)
+//     throw new Error("Bip21 URI is greater than 2048 characters");
+
+//   return bip21;
+// };
+
+export const createBip21 = (
+  onChain?: string,
+  label?: string,
+  lno?: string,
+  sp?: string,
+  lnurl?: string,
+  custom?: Custom[]
+): string => {
+  const base = onChain ? `bitcoin:${onChain}` : "bitcoin:";
   const url = new URL(base);
 
-  if (payload.label && payload.onChain)
-    url.searchParams.append("label", payload.label);
-  if (payload.lno) url.searchParams.append("lno", payload.lno);
-  if (payload.sp) url.searchParams.append("sp", payload.sp);
+  if (label && onChain) url.searchParams.append("label", label);
+  if (lno) url.searchParams.append("lno", lno);
+  if (sp) url.searchParams.append("sp", sp);
+  if (lnurl) url.searchParams.append("lnurl", lnurl);
 
-  if (Array.isArray(payload.custom)) {
-    payload.custom.forEach((item: Custom) => {
+  if (Array.isArray(custom)) {
+    custom.forEach((item: Custom) => {
       url.searchParams.append(item.prefix, item.value);
     });
   }
@@ -56,6 +88,37 @@ export const createBip21 = (payload: Bip21Dict): string => {
   return bip21;
 };
 
+export const createPayCodeParams = (
+  onChain?: string,
+  label?: string,
+  lno?: string,
+  sp?: string,
+  lnurl?: string,
+  custom?: Custom[]
+): Prisma.PayCodeParamCreateWithoutPayCodeInput[] => {
+  let create: Prisma.PayCodeParamCreateWithoutPayCodeInput[] = [];
+  if (onChain) create.push({ value: onChain, type: PayCodeParamType.ONCHAIN });
+  if (label) create.push({ value: label, type: PayCodeParamType.LABEL });
+  if (lno) create.push({ value: lno, type: PayCodeParamType.LNO });
+  if (sp) create.push({ value: sp, type: PayCodeParamType.SP });
+  if (lnurl) create.push({ value: lnurl, type: PayCodeParamType.LNURL });
+
+  if (Array.isArray(custom)) {
+    custom.forEach((item: Custom) => {
+      create.push({
+        value: item.value,
+        type: PayCodeParamType.CUSTOM,
+      });
+    });
+  }
+
+  if (create.length == 0) {
+    throw new Error("No parameters provided");
+  }
+
+  return create;
+};
+
 export function getZodEnumFromObjectKeys<
   TI extends Record<string, any>,
   R extends string = TI extends Record<infer R, any> ? R : never
@@ -65,32 +128,33 @@ export function getZodEnumFromObjectKeys<
 }
 
 export type Bip21URI = {
-    uri: string,
-    scheme: string;
-    path: string;
-    query: string;
-    params: {[key:string]:string};
-}
+  uri: string;
+  scheme: string;
+  path: string;
+  query: string;
+  params: { [key: string]: string };
+};
 
-export function parseBip21URI(uriString:string):Bip21URI {
-  const regex = /^(?:([^:/?#]+):)?(?:\/\/([^/?#]*))?([^?#]*)(?:\?([^#]*))?(?:#(.*))?/;
+export function parseBip21URI(uriString: string): Bip21URI {
+  const regex =
+    /^(?:([^:/?#]+):)?(?:\/\/([^/?#]*))?([^?#]*)(?:\?([^#]*))?(?:#(.*))?/;
   const match = uriString.match(regex);
-  
+
   if (!match) {
-    throw new Error('Invalid URI');
+    throw new Error("Invalid URI");
   }
 
-  let URI:Bip21URI = {
+  let URI: Bip21URI = {
     uri: uriString,
-    scheme: match[1] || '',
-    path: match[3] || '',
-    query: match[4] || '',
+    scheme: match[1] || "",
+    path: match[3] || "",
+    query: match[4] || "",
     params: {},
-  }
+  };
 
   if (URI.query) {
     URI.params = Object.fromEntries(
-      match[4].split('&').map(pair => pair.split('=').map(decodeURIComponent))
+      match[4].split("&").map((pair) => pair.split("=").map(decodeURIComponent))
     );
   }
 
