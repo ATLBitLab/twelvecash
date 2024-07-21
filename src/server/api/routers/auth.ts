@@ -109,6 +109,6 @@ export const authRouter = createTRPCRouter({
         "Set-Cookie",
         `access-token=${authToken}; Path=/; HttpOnly; SameSite=Strict`
       );
-      return { result: "Success" };
+      return { user: user };
     }),
 });

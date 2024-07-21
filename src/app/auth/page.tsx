@@ -1,8 +1,15 @@
-import { api } from "@/trpc/server";
 import Button from "../components/Button";
+import getUserServer from "../components/getUserServer";
 
 export default function Auth() {
-  // const challenge = await api.auth.getChallenge();
+  const user = getUserServer();
+  if (user) {
+    return (
+      <div>
+        <p>You shouldn't be here</p>
+      </div>
+    );
+  }
   return (
     <div>
       <Button href="/auth/nostr">Authenticate with Nostr</Button>

@@ -30,12 +30,12 @@ import { parse } from "cookie";
 
 export interface TokenUser {
   id: string;
-  nostrPublicKey: string;
-  lnNodePublicKey: string;
+  nostrPublicKey: string | null;
+  lnNodePublicKey: string | null;
   apiKey: string;
-  createdAt: string;
-  updatedAt: string;
-  lastLogin: string;
+  createdAt: Date;
+  updatedAt: Date;
+  lastLogin: Date | null;
 }
 
 export const createTRPCContext = async (opts: {
