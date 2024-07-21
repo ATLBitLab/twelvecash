@@ -2,10 +2,8 @@ import { createHash, randomBytes } from "crypto";
 import { verifyEvent } from "nostr-tools/pure";
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
-import { db } from "@/server/db";
 import { TRPCError } from "@trpc/server";
 import jwt from "jsonwebtoken";
-// import { sub } from "date-fns";
 
 const CHALLENGE_TIMEOUT_MS = 5 * 60 * 1000; // 5 min
 
@@ -28,7 +26,7 @@ export const authRouter = createTRPCRouter({
         event: z.string(), // TODO: Don't stringify json?
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       console.debug("nostrLogin input", input);
       const signedEvent = JSON.parse(input.event);
       if (!verifyEvent(signedEvent))
@@ -54,7 +52,7 @@ export const authRouter = createTRPCRouter({
         .update(challenge)
         .digest("hex");
 
-      const userAuth = await db.userAuth.findFirst({
+      const userAuth = await ctx.db.userAuth.findFirst({
         where: { challengeHash },
       });
       if (!userAuth) {
@@ -77,7 +75,7 @@ export const authRouter = createTRPCRouter({
       }
 
       // Now create a new user or return the existing user
-      const user = await db.$transaction(async (transactionPrisma) => {
+      const user = await ctx.db.$transaction(async (transactionPrisma) => {
         let innerUser;
         innerUser = await transactionPrisma.user.findUnique({
           where: {
@@ -100,11 +98,17 @@ export const authRouter = createTRPCRouter({
       const fiveMinutesAgo = new Date(
         currentTime.getTime() - CHALLENGE_TIMEOUT_MS
       );
-      await db.userAuth.deleteMany({
+      await ctx.db.userAuth.deleteMany({
         where: {
           OR: [{ challengeHash }, { createdAt: { lt: fiveMinutesAgo } }],
         },
       });
-      return { authToken: jwt.sign({ ...user }, process.env.JWT_SECRET ?? "") };
+      const authToken = jwt.sign({ ...user }, process.env.JWT_SECRET!);
+      // use better lib
+      ctx.resHeaders?.resHeaders.set(
+        "Set-Cookie",
+        `access-token=${authToken}; Path=/; HttpOnly; SameSite=Strict`
+      );
+      return { result: "Success" };
     }),
 });

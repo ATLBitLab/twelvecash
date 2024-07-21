@@ -6,9 +6,10 @@
  * TL;DR - This is where all the tRPC server stuff is created and plugged in. The pieces you will
  * need to use are documented accordingly near the end.
  */
-import { initTRPC } from "@trpc/server";
+import { TRPCError, initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
+import jwt from "jsonwebtoken";
 
 import { db } from "@/server/db";
 
@@ -24,9 +25,34 @@ import { db } from "@/server/db";
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = async (opts: { headers: Headers }) => {
+import { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
+import { parse } from "cookie";
+
+export interface TokenUser {
+  id: string;
+  nostrPublicKey: string;
+  lnNodePublicKey: string;
+  apiKey: string;
+  createdAt: string;
+  updatedAt: string;
+  lastLogin: string;
+}
+
+export const createTRPCContext = async (opts: {
+  headers: Headers;
+  resHeaders?: FetchCreateContextFnOptions;
+}) => {
+  const cookieHeader = opts.headers.get("cookie");
+  const cookies = cookieHeader ? parse(cookieHeader) : {};
+  const accessToken = cookies["access-token"];
+
+  const user = accessToken
+    ? (jwt.verify(accessToken, process.env.JWT_SECRET ?? "") as TokenUser)
+    : undefined;
+
   return {
     db,
+    user,
     ...opts,
   };
 };
@@ -81,3 +107,22 @@ export const createTRPCRouter = t.router;
  * are logged in.
  */
 export const publicProcedure = t.procedure;
+
+/**
+ * Protected (authenticated) procedure
+ *
+ * If you want a query or mutation to ONLY be accessible to logged in users, use this. It verifies
+ * the session is valid and guarantees `ctx.session.user` is not null.
+ *
+ * @see https://trpc.io/docs/procedures
+ */
+export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
+  if (!ctx || !ctx.user) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+  return next({
+    ctx: {
+      user: ctx.user,
+    },
+  });
+});

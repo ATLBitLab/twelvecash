@@ -1,7 +1,7 @@
 "use client";
 import Button from "@/app/components/Button";
-// import { api } from "@/trpc/server";
 import { api } from "@/trpc/react";
+import { useRouter } from "next/navigation";
 
 declare global {
   interface Window {
@@ -10,14 +10,14 @@ declare global {
 }
 
 export default function NostrAuth() {
+  const router = useRouter();
   const { data } = api.auth.getChallenge.useQuery(undefined, {
     refetchOnWindowFocus: false,
-    refetchInterval: 6 * 60 * 1000, // 5 min... display timeout?
+    refetchInterval: 5 * 60 * 1000, // 5 min... display timeout?
   });
   const login = api.auth.nostrLogin.useMutation({
-    onSuccess: (data) => {
-      console.debug("Successful login!");
-      console.debug("authToken", data.authToken);
+    onSuccess: () => {
+      router.push(`/account`);
     },
     onError: () => {
       console.error("Failed to log in");
