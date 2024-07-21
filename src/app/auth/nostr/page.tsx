@@ -17,6 +17,7 @@ export default function NostrAuth() {
   });
   const login = api.auth.nostrLogin.useMutation({
     onSuccess: () => {
+      // TODO: Set user
       router.push(`/account`);
     },
     onError: () => {
