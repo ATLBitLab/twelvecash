@@ -1,5 +1,9 @@
 import { randomPayCodeInput } from "@/lib/util/constant";
-import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { PayCodeStatus, Prisma } from "@prisma/client";
 import { createBip21, createPayCodeParams } from "@/lib/util";
@@ -9,6 +13,7 @@ import {
   animals,
   uniqueNamesGenerator,
 } from "unique-names-generator";
+import { createGzip } from "zlib";
 
 const domainMap = JSON.parse(process.env.DOMAINS!);
 
@@ -188,4 +193,25 @@ export const payCodeRouter = createTRPCRouter({
 
       return payCode;
     }),
+
+  getUserPaycodes: protectedProcedure.query(async ({ ctx }) => {
+    console.debug("Getting user's paycodes!");
+    return await ctx.db.payCode
+      .findMany({
+        where: {
+          userId: ctx.user.id,
+          status: PayCodeStatus.ACTIVE,
+        },
+        orderBy: {
+          updatedAt: "desc",
+        },
+      })
+      .catch((e: any) => {
+        console.error(e);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to get user's paycodes",
+        });
+      });
+  }),
 });
