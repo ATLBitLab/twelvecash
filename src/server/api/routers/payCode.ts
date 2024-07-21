@@ -196,6 +196,7 @@ export const payCodeRouter = createTRPCRouter({
 
   getUserPaycodes: protectedProcedure.query(async ({ ctx }) => {
     console.debug("Getting user's paycodes!");
+    // TODO: Select only values we need
     return await ctx.db.payCode
       .findMany({
         where: {
