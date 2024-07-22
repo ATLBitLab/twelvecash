@@ -35,29 +35,7 @@ export type Bip353 = {
   domain: string;
 };
 
-// export const createBip21 = (payload: Bip21Dict): string => {
-//   const base = payload.onChain ? `bitcoin:${payload.onChain}` : "bitcoin:";
-//   const url = new URL(base);
-
-//   if (payload.label && payload.onChain)
-//     url.searchParams.append("label", payload.label);
-//   if (payload.lno) url.searchParams.append("lno", payload.lno);
-//   if (payload.sp) url.searchParams.append("sp", payload.sp);
-
-//   if (Array.isArray(payload.custom)) {
-//     payload.custom.forEach((item: Custom) => {
-//       url.searchParams.append(item.prefix, item.value);
-//     });
-//   }
-
-//   const bip21 = url.toString();
-//   if (bip21 === "bitcoin:") throw new Error("No payment option provided");
-//   if (bip21.length > 2048)
-//     throw new Error("Bip21 URI is greater than 2048 characters");
-
-//   return bip21;
-// };
-
+// TODO: Fix unit tests
 export const createBip21 = (
   onChain?: string,
   label?: string,
@@ -106,6 +84,7 @@ export const createPayCodeParams = (
   if (Array.isArray(custom)) {
     custom.forEach((item: Custom) => {
       create.push({
+        prefix: item.prefix,
         value: item.value,
         type: PayCodeParamType.CUSTOM,
       });
@@ -117,6 +96,48 @@ export const createPayCodeParams = (
   }
 
   return create;
+};
+
+type Param = {
+  prefix: string | null;
+  value: string;
+  type: PayCodeParamType;
+};
+
+export const createBip21FromParams = (params: Param[]) => {
+  const base = "bitcoin:";
+  const url = new URL(base);
+  for (let param of params) {
+    if (param.type === PayCodeParamType.LABEL)
+      url.searchParams.append("label", param.value);
+    if (param.type === PayCodeParamType.LNO)
+      url.searchParams.append("lno", param.value);
+    if (param.type === PayCodeParamType.SP)
+      url.searchParams.append("sp", param.value);
+    if (param.type === PayCodeParamType.LNURL)
+      url.searchParams.append("lnurl", param.value);
+    if (param.type === PayCodeParamType.CUSTOM)
+      url.searchParams.append(param.prefix!, param.value);
+
+    // lol
+    if (param.type === PayCodeParamType.ONCHAIN) {
+      const onChainUrl = new URL(`${base}${param.value}`);
+      for (let innerParam of params) {
+        if (innerParam.type === PayCodeParamType.LABEL)
+          url.searchParams.append("label", innerParam.value);
+        if (innerParam.type === PayCodeParamType.LNO)
+          url.searchParams.append("lno", innerParam.value);
+        if (innerParam.type === PayCodeParamType.SP)
+          url.searchParams.append("sp", innerParam.value);
+        if (innerParam.type === PayCodeParamType.LNURL)
+          url.searchParams.append("lnurl", innerParam.value);
+        if (innerParam.type === PayCodeParamType.CUSTOM)
+          url.searchParams.append(innerParam.prefix!, param.value);
+      }
+      return onChainUrl.toString();
+    }
+  }
+  return url.toString();
 };
 
 export function getZodEnumFromObjectKeys<

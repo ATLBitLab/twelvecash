@@ -97,6 +97,7 @@ const testCases = [
     shouldThrow: false,
   },
 ];
+// TODO: Fix
 test.each(testCases)(
   "createBip21($input) should return $expected",
   ({ input, expected, shouldThrow }) => {
@@ -107,3 +108,6 @@ test.each(testCases)(
     }
   }
 );
+
+// TODO: test this
+// createBip21FromParams

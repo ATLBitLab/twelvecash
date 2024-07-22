@@ -1,12 +1,21 @@
-import { randomPayCodeInput } from "@/lib/util/constant";
+import { payCodeInput, randomPayCodeInput } from "@/lib/util/constant";
 import {
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
 } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
-import { PayCodeStatus, Prisma } from "@prisma/client";
-import { createBip21, createPayCodeParams } from "@/lib/util";
+import {
+  InvoiceKind,
+  InvoiceStatus,
+  PayCodeStatus,
+  Prisma,
+} from "@prisma/client";
+import {
+  createBip21,
+  createBip21FromParams,
+  createPayCodeParams,
+} from "@/lib/util";
 import axios from "axios";
 import {
   adjectives,
@@ -14,6 +23,7 @@ import {
   uniqueNamesGenerator,
 } from "unique-names-generator";
 import { createGzip } from "zlib";
+import { z } from "zod";
 
 const domainMap = JSON.parse(process.env.DOMAINS!);
 
@@ -59,12 +69,10 @@ export const payCodeRouter = createTRPCRouter({
           ? `${userName}.user._bitcoin-payment.${process.env.NETWORK}.${input.domain}`
           : `${userName}.user._bitcoin-payment.${input.domain}`;
 
-        const CF_URL = `${CF_BASE_URL}?name=${fullName}&type=TXT`;
-
         // First check to see if this user name already exists in DNS
         // Eventually, all paycodes will be in the DB.
         const res = await axios
-          .get(CF_URL, {
+          .get(`${CF_BASE_URL}?name=${fullName}&type=TXT`, {
             headers: {
               Content_Type: "application/json",
               Authorization: `Bearer ${process.env.CF_TOKEN}`,
@@ -135,7 +143,6 @@ export const payCodeRouter = createTRPCRouter({
           userName: userName,
           domain: input.domain,
           status: PayCodeStatus.ACTIVE,
-          redeemed: true,
           params: {
             create: create,
           },
@@ -190,6 +197,323 @@ export const payCodeRouter = createTRPCRouter({
 
         return innerPaycode;
       });
+      // TODO: catch and throw again?
+
+      return payCode;
+    }),
+
+  createPayCode: publicProcedure
+    .input(payCodeInput)
+    .mutation(async ({ ctx, input }) => {
+      const fullName = process.env.NETWORK
+        ? `${input.userName}.user._bitcoin-payment.${process.env.NETWORK}.${input.domain}`
+        : `${input.userName}.user._bitcoin-payment.${input.domain}`;
+
+      // First check to see if this user name already exists in DNS
+      // Eventually, all paycodes will be in the DB.
+      const CF_BASE_URL = `https://api.cloudflare.com/client/v4/zones/${
+        domainMap[input.domain]
+      }/dns_records`;
+      const res = await axios
+        .get(`${CF_BASE_URL}?name=${fullName}&type=TXT`, {
+          headers: {
+            Content_Type: "application/json",
+            Authorization: `Bearer ${process.env.CF_TOKEN}`,
+          },
+        })
+        .catch((e: any) => {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Server failed to talk to DNS",
+          });
+        });
+      if (res.data.result.length > 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "User name is taken",
+        });
+      }
+      // Check if the paycode exists in the our database
+      // TODO: Should probably make sure there isn't any open invoices
+      // for the paycode.. someone could be in the middle of purchasing the same name...
+      const existingPayCode = await ctx.db.payCode
+        .findFirst({
+          where: {
+            AND: [
+              { userName: input.userName },
+              { domain: input.domain },
+              { status: PayCodeStatus.ACTIVE },
+            ],
+          },
+        })
+        .catch((e: any) => {
+          console.error("e", e);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to lookup paycode",
+          });
+        });
+      if (existingPayCode) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "User name is taken",
+        });
+      }
+
+      let create = [];
+      try {
+        create = createPayCodeParams(
+          input.onChain,
+          input.label,
+          input.lno,
+          input.sp,
+          input.lnurl,
+          input.custom
+        );
+      } catch (e: any) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create pay code params",
+        });
+      }
+
+      // TODO: Fetch invoice from lightning node
+      // calculate price
+      const priceMsats = 1000000;
+      const hash = "abc123457980123";
+
+      // finally, create the paycode, but set to PENDING
+      const data: Prisma.PayCodeCreateInput = {
+        userName: input.userName,
+        domain: input.domain,
+        status: PayCodeStatus.PENDING,
+        params: {
+          create: create,
+        },
+        // TODO: Attach user to invoice
+        // attach invoice to paycodeId.. separate?
+        invoices: {
+          create: [
+            {
+              maxAgeSeconds: 600,
+              description: "purchase",
+              status: InvoiceStatus.OPEN,
+              bolt11: "lnbc1yadayada",
+              kind: InvoiceKind.PURCHASE,
+              hash: hash,
+              mSatsTarget: priceMsats,
+            },
+          ],
+        },
+      };
+
+      if (ctx.user) {
+        data.user = {
+          connect: { id: ctx.user.id },
+        };
+      }
+      // TODO: Create invoice alongside pending paycode
+      const payCode = await ctx.db.payCode
+        .create({
+          data: data,
+          include: {
+            params: true, // Include params in the response
+            invoices: true,
+          },
+        })
+        .catch((e: any) => {
+          console.error(e);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to add paycode to database",
+          });
+        });
+
+      console.debug("paycode.invoices", payCode.invoices[0].id);
+
+      return {
+        invoice: payCode.invoices[0],
+        payCodeId: payCode.id,
+      };
+    }),
+
+  checkPayment: publicProcedure
+    .input(
+      z.object({
+        invoiceId: z.string(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const invoice = await ctx.db.invoice
+        .findUnique({
+          where: {
+            id: input.invoiceId,
+          },
+        })
+        .catch((e: any) => {
+          console.error("e", e);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to lookup invoice",
+          });
+        });
+
+      if (!invoice) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invoice does not exist",
+        });
+      }
+
+      // Final states, no need for invoice lookup
+      if (
+        invoice.status === InvoiceStatus.SETTLED ||
+        invoice.status === InvoiceStatus.CANCELED
+      ) {
+        return { status: invoice.status };
+      }
+      // TODO: check lightning node for invoice by payment hash
+      // if the state is different that invoice status, update in db and return
+
+      const lnInvoiceStatus = "OPEN";
+      if (lnInvoiceStatus === "OPEN") {
+        return { status: InvoiceStatus.OPEN };
+      }
+      return { status: InvoiceStatus.SETTLED };
+    }),
+
+  redeemPayCode: publicProcedure
+    .input(
+      z.object({
+        invoiceId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // first make sure the invoice hasn't already been redeemed
+      const invoice = await ctx.db.invoice
+        .findFirst({
+          where: {
+            AND: [{ id: input.invoiceId }, { redeemed: false }],
+          },
+        })
+        .catch((e: any) => {
+          console.error("e", e);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to lookup invoice",
+          });
+        });
+
+      if (!invoice) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invoice does not exist or is already redeemed",
+        });
+      }
+      // TODO: If the transaction takes long (like 5s or something) it will time out and fail...
+      // can happen if ex. CF api is slow. Better way?
+      const payCode = await ctx.db
+        .$transaction(async (transactionPrisma) => {
+          const updateInvoice = await transactionPrisma.invoice.update({
+            where: {
+              id: input.invoiceId,
+            },
+            data: {
+              redeemed: true,
+            },
+          });
+          const updatePayCode = await transactionPrisma.payCode.update({
+            where: {
+              id: updateInvoice.payCodeId,
+            },
+            data: {
+              status: PayCodeStatus.ACTIVE,
+            },
+            include: {
+              params: true, // don't need
+            },
+          });
+          // Double check that there isn't already a record there...
+          const CF_BASE_URL = `https://api.cloudflare.com/client/v4/zones/${
+            domainMap[updatePayCode.domain]
+          }/dns_records`;
+          const fullName = process.env.NETWORK
+            ? `${updatePayCode.userName}.user._bitcoin-payment.${process.env.NETWORK}.${updatePayCode.domain}`
+            : `${updatePayCode.userName}.user._bitcoin-payment.${updatePayCode.domain}`;
+
+          const res = await axios
+            .get(`${CF_BASE_URL}?name=${fullName}&type=TXT`, {
+              headers: {
+                Content_Type: "application/json",
+                Authorization: `Bearer ${process.env.CF_TOKEN}`,
+              },
+            })
+            .catch((e: any) => {
+              throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: "Server failed to talk to DNS",
+              });
+            });
+          if (res.data.result.length > 0) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "User name is taken",
+            });
+          }
+
+          let bip21: string;
+          try {
+            // use native type returned instead of mapping
+            bip21 = createBip21FromParams(
+              updatePayCode.params.map((p) => ({
+                prefix: p.prefix,
+                value: p.value,
+                type: p.type,
+              }))
+            );
+          } catch (e: any) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: e.message,
+            });
+          }
+
+          await axios
+            .post(
+              CF_BASE_URL,
+              {
+                content: bip21,
+                name: fullName,
+                proxied: false,
+                type: "TXT",
+                comment: "Twelve Cash User DNS Update",
+                ttl: 3600,
+              },
+              {
+                method: "POST",
+                headers: {
+                  Content_Type: "application/json",
+                  Authorization: `Bearer ${process.env.CF_TOKEN}`,
+                },
+              }
+            )
+            .catch((e: any) => {
+              console.error("Failed to post record to CloudFlare", e);
+              throw new TRPCError({
+                code: "INTERNAL_SERVER_ERROR",
+                message: "Failed to post record to CloudFlare",
+              });
+            });
+
+          return updatePayCode;
+        })
+        .catch((e: any) => {
+          console.error("Failed to complete transaction", e);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to redeem pay code.",
+          });
+        });
 
       return payCode;
     }),
