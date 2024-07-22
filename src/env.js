@@ -21,6 +21,10 @@ const envSchema = z
     CF_TOKEN: z.string(),
     DATABASE_URL: z.string(),
     JWT_SECRET: z.string(),
+    LND_HOST: z.string(),
+    LND_PORT: z.string(),
+    LND_MACAROON: z.string(),
+    LND_TLS_CERT: z.string(),
     NODE_ENV: z.enum(["development", "test", "production"]),
   })
   .refine(

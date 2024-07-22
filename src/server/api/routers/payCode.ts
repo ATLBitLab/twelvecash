@@ -24,6 +24,7 @@ import {
 } from "unique-names-generator";
 import { createGzip } from "zlib";
 import { z } from "zod";
+import { createInvoice, lookupInvoice } from "@/server/lnd";
 
 const domainMap = JSON.parse(process.env.DOMAINS!);
 
@@ -277,10 +278,18 @@ export const payCodeRouter = createTRPCRouter({
         });
       }
 
-      // TODO: Fetch invoice from lightning node
-      // calculate price
+      // TODO: calculate price
       const priceMsats = 1000000;
-      const hash = "abc123457980123";
+      let invoice;
+
+      try {
+        invoice = await createInvoice(priceMsats, "Purchase pay code.");
+      } catch (e: any) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create invoice",
+        });
+      }
 
       // finally, create the paycode, but set to PENDING
       const data: Prisma.PayCodeCreateInput = {
@@ -290,17 +299,15 @@ export const payCodeRouter = createTRPCRouter({
         params: {
           create: create,
         },
-        // TODO: Attach user to invoice
-        // attach invoice to paycodeId.. separate?
         invoices: {
           create: [
             {
               maxAgeSeconds: 600,
               description: "purchase",
               status: InvoiceStatus.OPEN,
-              bolt11: "lnbc1yadayada",
+              bolt11: invoice.payment_request,
               kind: InvoiceKind.PURCHASE,
-              hash: hash,
+              hash: invoice.r_hash,
               mSatsTarget: priceMsats,
             },
           ],
@@ -312,12 +319,11 @@ export const payCodeRouter = createTRPCRouter({
           connect: { id: ctx.user.id },
         };
       }
-      // TODO: Create invoice alongside pending paycode
       const payCode = await ctx.db.payCode
         .create({
           data: data,
           include: {
-            params: true, // Include params in the response
+            params: true,
             invoices: true,
           },
         })
@@ -364,7 +370,6 @@ export const payCodeRouter = createTRPCRouter({
           message: "Invoice does not exist",
         });
       }
-
       // Final states, no need for invoice lookup
       if (
         invoice.status === InvoiceStatus.SETTLED ||
@@ -372,14 +377,29 @@ export const payCodeRouter = createTRPCRouter({
       ) {
         return { status: invoice.status };
       }
-      // TODO: check lightning node for invoice by payment hash
-      // if the state is different that invoice status, update in db and return
 
-      const lnInvoiceStatus = "OPEN";
-      if (lnInvoiceStatus === "OPEN") {
-        return { status: InvoiceStatus.OPEN };
+      let lndInvoice;
+      try {
+        lndInvoice = await lookupInvoice(invoice.hash);
+      } catch (e: any) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Failed to fetch invoice from lnd node",
+        });
       }
-      return { status: InvoiceStatus.SETTLED };
+      console.debug("lndInvoice state", lndInvoice.state);
+      if (lndInvoice.status !== invoice.status) {
+        const updateInvoice = await ctx.db.invoice.update({
+          where: {
+            id: input.invoiceId,
+          },
+          data: {
+            status: lndInvoice.state, // using same strings
+          },
+        });
+        return { status: updateInvoice.status };
+      }
+      return { status: invoice.status };
     }),
 
   redeemPayCode: publicProcedure
