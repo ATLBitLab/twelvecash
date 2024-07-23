@@ -22,7 +22,6 @@ import {
   animals,
   uniqueNamesGenerator,
 } from "unique-names-generator";
-import { createGzip } from "zlib";
 import { z } from "zod";
 import { createInvoice, lookupInvoice } from "@/server/lnd";
 
@@ -430,6 +429,7 @@ export const payCodeRouter = createTRPCRouter({
           message: "Invoice does not exist or is already redeemed",
         });
       }
+      // TODO: If the CF post fails, paycode should still be taken by user since they purchased it.
       // TODO: If the transaction takes long (like 5s or something) it will time out and fail...
       // can happen if ex. CF api is slow. Better way?
       const payCode = await ctx.db

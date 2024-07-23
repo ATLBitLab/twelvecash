@@ -33,7 +33,12 @@ export const randomPayCodeInput = z
 
 export const payCodeInput = z
   .object({
-    userName: z.string().min(4),
+    userName: z
+      .string()
+      .min(4)
+      .regex(/^[a-zA-Z0-9._-]+$/, {
+        message: "Accepted characters are: a-z, A-Z, 0-9, '.', '-', and '_'",
+      }),
     domain: z.enum(DOMAINS),
     onChain: z.string().optional(),
     label: z.string().optional(),
