@@ -1,12 +1,12 @@
-const { lnaddrToLNURL, createBip21 } = require("./index");
+const { lnAddrToLNURL, createBip21 } = require("./index");
 
 test("try using different lightning address inputs", () => {
-  expect(lnaddrToLNURL("chad@strike.me")).toBe(
+  expect(lnAddrToLNURL("chad@strike.me")).toBe(
     "lnurl1dp68gurn8ghj7um5wf5kkefwd4jj7tnhv4kxctttdehhwm30d3h82unvwqhkx6rpvsclqksp"
   );
-  expect(() => lnaddrToLNURL("")).toThrow();
-  expect(() => lnaddrToLNURL("test")).toThrow();
-  expect(() => lnaddrToLNURL("@domain.com")).toThrow();
+  expect(() => lnAddrToLNURL("")).toThrow();
+  expect(() => lnAddrToLNURL("test")).toThrow();
+  expect(() => lnAddrToLNURL("@domain.com")).toThrow();
 });
 
 const onChain = "175tWpb8K1S7NmH4Zx6rewF9WQrcZv245W";

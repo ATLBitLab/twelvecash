@@ -10,6 +10,7 @@ import {
 } from "@bitcoin-design/bitcoin-icons-react/filled";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
+import { Bip21Dict, Custom, lnAddrToLNURL } from "@/lib/util";
 
 export default function New() {
   const [optionsExpanded, setOptionsExpanded] = useState(false);
@@ -46,13 +47,30 @@ export default function New() {
       });
       return;
     }
+
+    let payload: Bip21Dict & { domain: string } = {
+      domain: data.domain,
+      onChain: data.onChain,
+      lno: data.lno,
+      sp: data.sp,
+    };
+
+    if (data.lnurl) {
+      // If it's a lightning address, try to convert it to lnurl
+      let custom: Custom = { prefix: "lnurl", value: data.lnurl };
+      try {
+        custom.value = lnAddrToLNURL(data.lnurl);
+      } catch (e) {}
+      payload.custom = [custom];
+    }
+
     try {
       const res = await fetch("/v2/record", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       router.push(`/new/${json.bip353}`);
