@@ -11,9 +11,10 @@ export default function Auth() {
     );
   }
   return (
-    <div>
+    <div className="flex flex-col gap-4 max-w-xl mx-auto p-6">
+      <p className="text-lg">Login with your Nostr key so that you can keep track of your user names.</p>
       <Button href="/auth/nostr">Authenticate with Nostr</Button>
-      <Button>Authenticate with Lightning</Button>
+      <Button href="#" format="outline" disabled>Authenticate with Lightning</Button>
     </div>
   );
 }
