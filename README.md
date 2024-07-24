@@ -75,7 +75,7 @@ Start up the database:
 Create the Prisma client and push it to the database:
 
 ```bash
-yarn prisma generate
+yarn postinstall
 yarn db:push
 ```
 
