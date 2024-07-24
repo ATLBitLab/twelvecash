@@ -1,9 +1,9 @@
 "use client";
-import Button from "@/app/components/Button";
 import { useUser } from "@/app/components/ClientUserProvider";
 import { api } from "@/trpc/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import NostrAuthSpinner from "@/app/features/NostrAuthSpinner";
 
 declare global {
   interface Window {
@@ -31,8 +31,10 @@ export default function NostrAuth() {
   });
 
   useEffect(() => {
-    if (window.nostr) setNostrReady(true);
-  }, []);
+    if (!window.nostr) return;
+    setNostrReady(true);
+    if (data?.challenge) authenticate();
+  }, [data?.challenge]);
 
   const authenticate = async () => {
     if (!data?.challenge) throw new Error("Missing challenge!");
@@ -67,22 +69,26 @@ export default function NostrAuth() {
   };
 
   if (user.user) {
+    router.push('/account');
     return (
-      <main>
-        <p>What are you doing here</p>
+      <main className="max-w-lg mx-auto text-center flex flex-col gap-4 justify-center items-center p-6">
+        <NostrAuthSpinner
+          text="Going to your account"
+          button={false}
+        />
       </main>
     );
   }
 
-  // TODO: don't allow re authentication if already logged in, unless adding additional key
-  return (
-    <main>
-      {nostrReady && data ? (
-        <Button onClick={authenticate}>you got nostr!</Button>
-      ) : (
-        <div>Install a Nip07 extension to authenticate with Nostr!</div>
-      )}
-      <p>{data ? data.challenge : "yeet"}</p>
+  return(
+    <main className="max-w-lg mx-auto text-center flex flex-col gap-4 justify-center items-center p-6">
+      <NostrAuthSpinner
+        text={nostrReady && data ? "Trying to log in with Nostr" : "Checking for Nostr..."}
+        buttonText="Login with Browser Extension"
+        buttonFunction={authenticate}
+        buttonDisabled={nostrReady && data ? false : true}
+        button={nostrReady && data ? false : true}
+      />
     </main>
-  );
+  )
 }
