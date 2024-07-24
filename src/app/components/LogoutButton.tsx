@@ -19,5 +19,5 @@ export default function LogoutButton() {
     },
   });
 
-  return <Button onClick={() => logout.mutate()}>Logout</Button>;
+  return <Button format="secondary" onClick={() => logout.mutate()}>Logout</Button>;
 }
