@@ -27,7 +27,7 @@ export default function RootLayout({
               <Header />
               <div className="min-h-full p-4">{children}</div>
               <footer className="border-t border-t-purple-800 pt-2 mt-4 text-purple-800">
-                <ul className="flex flex-col gap-2 md:flex-row md:gap-4 md: p-4">
+                <ul className="flex flex-col gap-2 md:flex-row md:gap-4 md: p-4 items-center justify-center">
                   <li>
                     <a href="https://github.com/ATLBitLab/twelvecash">
                       Developer Docs
