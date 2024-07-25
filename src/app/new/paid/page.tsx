@@ -7,6 +7,7 @@ import {
   ArrowRightIcon,
   CaretUpIcon,
   CaretDownIcon,
+  RefreshIcon
 } from "@bitcoin-design/bitcoin-icons-react/filled";
 import { useRouter } from "next/navigation";
 import { RouterOutputs, api } from "@/trpc/react";
@@ -175,7 +176,13 @@ export default function New() {
         </Button>
       </div>
       {paymentInfo && (
-        <InteractionModal title="Payment" close={() => setPaymentInfo(null)}>
+        <InteractionModal title="Pay for User Name" close={() => setPaymentInfo(null)}>
+          <div className="flex flex-row justify-between items-center mb-4">
+            <p className="text-center text-2xl mb-0 font-semibold">1,000 sats</p>
+            <div className="flex flex-row gap-1 items-center justify-end font-bold">
+              Awaiting Payment <RefreshIcon className="w-6 h-6 animate-spin" />
+            </div>
+          </div>
           <Invoice
             paymentInfo={paymentInfo}
             onSuccess={() =>

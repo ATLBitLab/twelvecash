@@ -9,6 +9,7 @@ interface ButtonProps {
     size?: "small" | "medium" | "large";
     wide?: boolean;
     active?: boolean;
+    id?: string;
 }
 
 export default function Button(props:ButtonProps){
