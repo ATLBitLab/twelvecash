@@ -20,6 +20,7 @@ export default function New() {
   const [paymentInfo, setPaymentInfo] = useState<
     RouterOutputs["payCode"]["createPayCode"] | null
   >(null);
+  const [freeName, setFreeName] = useState(false);
   const router = useRouter();
   const createPayCode = api.payCode.createPayCode.useMutation({
     onSuccess: (data) => {
@@ -74,19 +75,32 @@ export default function New() {
 
   return (
     <main className="mx-auto max-w-2xl flex flex-col gap-9 w-full p-6">
-      <h1 className="text-center">Paste Your Payment Info Below</h1>
-      <Input
-        name="userName"
-        label="User Name"
-        description={
-          errors.userName ? errors.userName.message : "Pick your user name!"
+      <h1 className="text-center">Create a Pay Code</h1>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-row gap-2 items-center justify-center">
+          <Button format="outline" size="small" active={!freeName} onClick={()=>setFreeName(!freeName)}>
+            Choose a Name (1000 sats)
+          </Button>
+          <Button format="outline" size="small" active={freeName} onClick={()=>setFreeName(!freeName)}>
+            Give Me a Random Name (Free)
+          </Button>
+        </div>
+        {!freeName && 
+          <Input
+            name="userName"
+            label="Choose a User Name"
+            description={
+              errors.userName ? errors.userName.message : "Pick your user name!"
+            }
+            placeholder="satoshi"
+            register={register}
+            append={`@12cash.dev`}
+          />
         }
-        placeholder="satoshi"
-        register={register}
-      />
+      </div>
       <Input
         name="lno"
-        label="Bolt12 Offer"
+        label="BOLT 12 Offer"
         description={
           errors.lno ? errors.lno.message : "Learn more at BOLT12.org"
         }
