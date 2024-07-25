@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Button from "@/app/components/Button";
 import Input from "@/app/components/InputZ";
 import { useZodForm } from "@/lib/util/useZodForm";
@@ -7,7 +7,7 @@ import {
   ArrowRightIcon,
   CaretUpIcon,
   CaretDownIcon,
-  RefreshIcon
+  RefreshIcon,
 } from "@bitcoin-design/bitcoin-icons-react/filled";
 import { useRouter } from "next/navigation";
 import { RouterOutputs, api } from "@/trpc/react";
@@ -27,10 +27,18 @@ export default function New() {
     onSuccess: (data) => {
       console.debug("success data", data);
       setPaymentInfo(data);
-      //   router.push(`/new/${data.userName}@${data.domain}`);
     },
     onError: (err) => {
       console.error("Failed to create paycode", err);
+    },
+  });
+  const createRandomPaycode = api.payCode.createRandomPayCode.useMutation({
+    onSuccess: (data) => {
+      console.debug("success data", data);
+      router.push(`/new/${data.userName}@${data.domain}`);
+    },
+    onError: () => {
+      console.error("Failed to create paycode");
     },
   });
   const redeemPayCode = api.payCode.redeemPayCode.useMutation({
@@ -49,7 +57,9 @@ export default function New() {
   const {
     register,
     handleSubmit,
+    setValue,
     setError,
+    trigger,
     formState: { errors, isDirty, isValid },
   } = useZodForm({
     mode: "onChange",
@@ -59,6 +69,18 @@ export default function New() {
       domain: "12cash.dev",
     },
   });
+
+  useEffect(() => {
+    if (freeName) {
+      // hack to allow us to use the same validator for both free and paid
+      // this username won't be used in the free api.
+      setValue("userName", "hack");
+      trigger();
+      return;
+    }
+    setValue("userName", "");
+    trigger();
+  }, [freeName]);
 
   const createPaycode = async (
     data: RouterInputs["payCode"]["createPayCode"]
@@ -70,7 +92,10 @@ export default function New() {
       });
       return;
     }
-    // TODO: convert ln address to lnurl
+    if (freeName) {
+      createRandomPaycode.mutate(data);
+      return;
+    }
     createPayCode.mutate(data);
   };
 
@@ -79,14 +104,24 @@ export default function New() {
       <h1 className="text-center">Create a Pay Code</h1>
       <div className="flex flex-col gap-6">
         <div className="flex flex-row gap-2 items-center justify-center">
-          <Button format="outline" size="small" active={!freeName} onClick={()=>setFreeName(!freeName)}>
+          <Button
+            format="outline"
+            size="small"
+            active={!freeName}
+            onClick={() => setFreeName(!freeName)}
+          >
             Choose a Name (1000 sats)
           </Button>
-          <Button format="outline" size="small" active={freeName} onClick={()=>setFreeName(!freeName)}>
+          <Button
+            format="outline"
+            size="small"
+            active={freeName}
+            onClick={() => setFreeName(!freeName)}
+          >
             Give Me a Random Name (Free)
           </Button>
         </div>
-        {!freeName && 
+        {!freeName && (
           <Input
             name="userName"
             label="Choose a User Name"
@@ -97,7 +132,7 @@ export default function New() {
             register={register}
             append={`@12cash.dev`}
           />
-        }
+        )}
       </div>
       <Input
         name="lno"
@@ -176,9 +211,14 @@ export default function New() {
         </Button>
       </div>
       {paymentInfo && (
-        <InteractionModal title="Pay for User Name" close={() => setPaymentInfo(null)}>
+        <InteractionModal
+          title="Pay for User Name"
+          close={() => setPaymentInfo(null)}
+        >
           <div className="flex flex-row justify-between items-center mb-4">
-            <p className="text-center text-2xl mb-0 font-semibold">1,000 sats</p>
+            <p className="text-center text-2xl mb-0 font-semibold">
+              1,000 sats
+            </p>
             <div className="flex flex-row gap-1 items-center justify-end font-bold">
               Awaiting Payment <RefreshIcon className="w-6 h-6 animate-spin" />
             </div>
