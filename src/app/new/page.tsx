@@ -1,28 +1,48 @@
 "use client";
 import { useState } from "react";
-import Button from "../components/Button";
-import Input from "../components/InputZ";
+import Button from "@/app/components/Button";
+import Input from "@/app/components/InputZ";
 import { useZodForm } from "@/lib/util/useZodForm";
 import {
   ArrowRightIcon,
   CaretUpIcon,
   CaretDownIcon,
+  RefreshIcon
 } from "@bitcoin-design/bitcoin-icons-react/filled";
 import { useRouter } from "next/navigation";
-import { api } from "@/trpc/react";
+import { RouterOutputs, api } from "@/trpc/react";
 import { RouterInputs } from "@/trpc/react";
-import { randomPayCodeInput } from "@/lib/util/constant";
+import { payCodeInput } from "@/lib/util/constant";
+import InteractionModal from "@/app/components/InteractionModal";
+import Invoice from "@/app/components/Invoice";
 
 export default function New() {
   const [optionsExpanded, setOptionsExpanded] = useState(false);
+  const [paymentInfo, setPaymentInfo] = useState<
+    RouterOutputs["payCode"]["createPayCode"] | null
+  >(null);
+  const [freeName, setFreeName] = useState(false);
   const router = useRouter();
-  const createRandomPaycode = api.payCode.createRandomPayCode.useMutation({
+  const createPayCode = api.payCode.createPayCode.useMutation({
     onSuccess: (data) => {
       console.debug("success data", data);
-      router.push(`/new/${data.userName}@${data.domain}`);
+      setPaymentInfo(data);
+      //   router.push(`/new/${data.userName}@${data.domain}`);
     },
-    onError: () => {
-      console.error("Failed to create paycode");
+    onError: (err) => {
+      console.error("Failed to create paycode", err);
+    },
+  });
+  const redeemPayCode = api.payCode.redeemPayCode.useMutation({
+    onSuccess: (payCode) => {
+      // setPaymentInfo null?
+      setPaymentInfo(null);
+      console.debug("redeem success!", payCode);
+      router.push(`/new/${payCode.userName}@${payCode.domain}`);
+    },
+    onError: (err) => {
+      setPaymentInfo(null);
+      console.error("Failed to redeem paycode... sorry", err);
     },
   });
 
@@ -33,7 +53,7 @@ export default function New() {
     formState: { errors, isDirty, isValid },
   } = useZodForm({
     mode: "onChange",
-    schema: randomPayCodeInput,
+    schema: payCodeInput,
     defaultValues: {
       // domain: "twelve.cash",
       domain: "12cash.dev",
@@ -41,7 +61,7 @@ export default function New() {
   });
 
   const createPaycode = async (
-    data: RouterInputs["payCode"]["createRandomPayCode"]
+    data: RouterInputs["payCode"]["createPayCode"]
   ) => {
     if (!data.lno && !data.sp && !data.onChain && !data.lnurl) {
       console.error("At least one payment option must be provided.");
@@ -51,15 +71,37 @@ export default function New() {
       return;
     }
     // TODO: convert ln address to lnurl
-    createRandomPaycode.mutate(data);
+    createPayCode.mutate(data);
   };
 
   return (
     <main className="mx-auto max-w-2xl flex flex-col gap-9 w-full p-6">
-      <h1 className="text-center">Paste Your Payment Info Below</h1>
+      <h1 className="text-center">Create a Pay Code</h1>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-row gap-2 items-center justify-center">
+          <Button format="outline" size="small" active={!freeName} onClick={()=>setFreeName(!freeName)}>
+            Choose a Name (1000 sats)
+          </Button>
+          <Button format="outline" size="small" active={freeName} onClick={()=>setFreeName(!freeName)}>
+            Give Me a Random Name (Free)
+          </Button>
+        </div>
+        {!freeName && 
+          <Input
+            name="userName"
+            label="Choose a User Name"
+            description={
+              errors.userName ? errors.userName.message : "Pick your user name!"
+            }
+            placeholder="satoshi"
+            register={register}
+            append={`@12cash.dev`}
+          />
+        }
+      </div>
       <Input
         name="lno"
-        label="Bolt12 Offer"
+        label="BOLT 12 Offer"
         description={
           errors.lno ? errors.lno.message : "Learn more at BOLT12.org"
         }
@@ -133,6 +175,22 @@ export default function New() {
           Create Pay Code <ArrowRightIcon className="w-6 h-6" />{" "}
         </Button>
       </div>
+      {paymentInfo && (
+        <InteractionModal title="Pay for User Name" close={() => setPaymentInfo(null)}>
+          <div className="flex flex-row justify-between items-center mb-4">
+            <p className="text-center text-2xl mb-0 font-semibold">1,000 sats</p>
+            <div className="flex flex-row gap-1 items-center justify-end font-bold">
+              Awaiting Payment <RefreshIcon className="w-6 h-6 animate-spin" />
+            </div>
+          </div>
+          <Invoice
+            paymentInfo={paymentInfo}
+            onSuccess={() =>
+              redeemPayCode.mutate({ invoiceId: paymentInfo.invoice.id })
+            }
+          />
+        </InteractionModal>
+      )}
     </main>
   );
 }
