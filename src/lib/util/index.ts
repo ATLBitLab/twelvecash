@@ -3,21 +3,19 @@ import { bech32 } from "bech32";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 
-export const lnaddrToLNURL = (lnaddr: string) => {
+export const lnAddrToLNURL = (lnaddr: string) => {
   const [username, domain] = lnaddr.split("@");
   if (!username || !domain)
     throw new Error("Failed to parse lightning address");
 
   const decodedLnurl = `https://${domain}/.well-known/lnurlp/${username}`;
-  console.debug("decodedLnurl", decodedLnurl);
 
   let words = bech32.toWords(Buffer.from(decodedLnurl, "utf8"));
   const lnurl = bech32.encode("lnurl", words);
-  console.debug("lnurl", lnurl);
   return lnurl;
 };
 
-type Custom = {
+export type Custom = {
   prefix: string;
   value: string;
 };
