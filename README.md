@@ -66,6 +66,19 @@ You can use this tool with Cloudflare DNS API.
 
 ### Running the Dev Server
 
+Start up the database:
+
+```bash
+./start-database.sh
+```
+
+Create the Prisma client and push it to the database:
+
+```bash
+yarn postinstall
+yarn db:push
+```
+
 Run the development server:
 
 ```bash

@@ -1,105 +1,165 @@
 "use client";
-import { useState } from "react";
-import Button from "../components/Button";
-import Input from "../components/InputZ";
+import { useEffect, useState } from "react";
+import Button from "@/app/components/Button";
+import Input from "@/app/components/InputZ";
 import { useZodForm } from "@/lib/util/useZodForm";
 import {
   ArrowRightIcon,
   CaretUpIcon,
   CaretDownIcon,
+  RefreshIcon,
 } from "@bitcoin-design/bitcoin-icons-react/filled";
-import { z } from "zod";
 import { useRouter } from "next/navigation";
-import { Bip21Dict, Custom, lnAddrToLNURL } from "@/lib/util";
+import { RouterOutputs, api } from "@/trpc/react";
+import { RouterInputs } from "@/trpc/react";
+import { payCodeInput } from "@/lib/util/constant";
+import InteractionModal from "@/app/components/InteractionModal";
+import Invoice from "@/app/components/Invoice";
 
 export default function New() {
   const [optionsExpanded, setOptionsExpanded] = useState(false);
+  const [paymentInfo, setPaymentInfo] = useState<
+    RouterOutputs["payCode"]["createPayCode"] | null
+  >(null);
+  const [freeName, setFreeName] = useState(false);
   const router = useRouter();
+  const createPayCode = api.payCode.createPayCode.useMutation({
+    onSuccess: (data) => {
+      console.debug("success data", data);
+      setPaymentInfo(data);
+    },
+    onError: (err) => {
+      console.error("Failed to create paycode", err);
+    },
+  });
+  const createRandomPaycode = api.payCode.createRandomPayCode.useMutation({
+    onSuccess: (data) => {
+      console.debug("success data", data);
+      router.push(`/new/${data.userName}@${data.domain}`);
+    },
+    onError: () => {
+      console.error("Failed to create paycode");
+    },
+  });
+  const redeemPayCode = api.payCode.redeemPayCode.useMutation({
+    onSuccess: (payCode) => {
+      // setPaymentInfo null?
+      setPaymentInfo(null);
+      console.debug("redeem success!", payCode);
+      router.push(`/new/${payCode.userName}@${payCode.domain}`);
+    },
+    onError: (err) => {
+      setPaymentInfo(null);
+      console.error("Failed to redeem paycode... sorry", err);
+    },
+  });
 
   const {
     register,
     handleSubmit,
+    setValue,
     setError,
-    formState: { errors, isDirty },
+    trigger,
+    formState: { errors, isDirty, isValid },
   } = useZodForm({
-    mode: "onSubmit",
-    schema: z.object({
-      lno: z
-        .union([z.string().startsWith("lno"), z.string().length(0)])
-        .optional(),
-      sp: z
-        .union([z.string().startsWith("sp"), z.string().length(0)])
-        .optional(),
-      onChain: z.string().optional(),
-      label: z.string().optional(),
-      lnurl: z.string().optional(),
-      domain: z.string(),
-    }),
+    mode: "onChange",
+    schema: payCodeInput,
     defaultValues: {
-      domain: "twelve.cash",
+      // domain: "twelve.cash",
+      domain: "12cash.dev",
     },
   });
 
-  const createPaycode = async (data: any) => {
+  useEffect(() => {
+    if (freeName) {
+      // hack to allow us to use the same validator for both free and paid
+      // this username won't be used in the free api.
+      setValue("userName", "hack");
+      trigger();
+      return;
+    }
+    setValue("userName", "");
+    trigger();
+  }, [freeName]);
+
+  const createPaycode = async (
+    data: RouterInputs["payCode"]["createPayCode"]
+  ) => {
     if (!data.lno && !data.sp && !data.onChain && !data.lnurl) {
+      console.error("At least one payment option must be provided.");
       setError("lno", {
         message: "At least one payment option must be provided.",
       });
       return;
     }
-
-    let payload: Bip21Dict & { domain: string } = {
-      domain: data.domain,
-      onChain: data.onChain,
-      lno: data.lno,
-      sp: data.sp,
-    };
-
-    if (data.lnurl) {
-      // If it's a lightning address, try to convert it to lnurl
-      let custom: Custom = { prefix: "lnurl", value: data.lnurl };
-      try {
-        custom.value = lnAddrToLNURL(data.lnurl);
-      } catch (e) {}
-      payload.custom = [custom];
+    if (freeName) {
+      createRandomPaycode.mutate(data);
+      return;
     }
-
-    try {
-      const res = await fetch("/v2/record", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      router.push(`/new/${json.bip353}`);
-    } catch (e: any) {
-      console.error(e);
-    }
+    createPayCode.mutate(data);
   };
 
   return (
     <main className="mx-auto max-w-2xl flex flex-col gap-9 w-full p-6">
-      <h1 className="text-center">Paste Your Payment Info Below</h1>
+      <h1 className="text-center">Create a Pay Code</h1>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-row gap-2 items-center justify-center">
+          <Button
+            format="outline"
+            size="small"
+            active={!freeName}
+            onClick={() => setFreeName(!freeName)}
+          >
+            Choose a Name (1000 sats)
+          </Button>
+          <Button
+            format="outline"
+            size="small"
+            active={freeName}
+            onClick={() => setFreeName(!freeName)}
+          >
+            Give Me a Random Name (Free)
+          </Button>
+        </div>
+        {!freeName && (
+          <Input
+            name="userName"
+            label="Choose a User Name"
+            description={
+              errors.userName ? errors.userName.message : "Pick your user name!"
+            }
+            placeholder="satoshi"
+            register={register}
+            append={`@12cash.dev`}
+          />
+        )}
+      </div>
       <Input
         name="lno"
-        label="Bolt12 Offer"
-        description="Learn more at BOLT12.org"
+        label="BOLT 12 Offer"
+        description={
+          errors.lno ? errors.lno.message : "Learn more at BOLT12.org"
+        }
         placeholder="lno123...xyz"
         register={register}
       />
       <Input
         name="sp"
         label="Silent Payments address"
-        description="Learn more at silentpayments.xyz"
+        description={
+          errors.sp ? errors.sp.message : "Learn more at silentpayments.xyz"
+        }
         placeholder="sp123...xyz"
         register={register}
       />
       <Input
         name="onChain"
         label="Onchain Address"
-        description="Address re-use is discouraged for privacy. Consider using a silent payment address instead."
+        description={
+          errors.onChain
+            ? errors.onChain.message
+            : "Address re-use is discouraged for privacy. Consider using a silent payment address instead."
+        }
         placeholder="bc123...xyz"
         hidden={!optionsExpanded}
         register={register}
@@ -107,7 +167,11 @@ export default function New() {
       <Input
         name="label"
         label="Label"
-        description="Not all wallets support this. It allows a payee to categorize an address with a name."
+        description={
+          errors.label
+            ? errors.label.message
+            : "Not all wallets support this. It allows a payee to categorize an address with a name."
+        }
         placeholder="Your Name / Nym"
         hidden={!optionsExpanded}
         register={register}
@@ -115,8 +179,12 @@ export default function New() {
       <Input
         name="lnurl"
         label="LNURL Pay (or Lightning Address)"
-        description="You can add in LNURL information for services that do not support these other methods."
-        placeholder="lnurl123...xyz"
+        description={
+          errors.lnurl
+            ? errors.lnurl.message
+            : "You can add in LNURL information for services that do not support these other methods."
+        }
+        placeholder="lnurl123...xyz / user@strike.me"
         hidden={!optionsExpanded}
         register={register}
       />
@@ -135,10 +203,34 @@ export default function New() {
             </>
           )}
         </Button>
-        <Button onClick={handleSubmit(createPaycode)}>
+        <Button
+          disabled={!isDirty || !isValid}
+          onClick={handleSubmit(createPaycode)}
+        >
           Create Pay Code <ArrowRightIcon className="w-6 h-6" />{" "}
         </Button>
       </div>
+      {paymentInfo && (
+        <InteractionModal
+          title="Pay for User Name"
+          close={() => setPaymentInfo(null)}
+        >
+          <div className="flex flex-row justify-between items-center mb-4">
+            <p className="text-center text-2xl mb-0 font-semibold">
+              1,000 sats
+            </p>
+            <div className="flex flex-row gap-1 items-center justify-end font-bold">
+              Awaiting Payment <RefreshIcon className="w-6 h-6 animate-spin" />
+            </div>
+          </div>
+          <Invoice
+            paymentInfo={paymentInfo}
+            onSuccess={() =>
+              redeemPayCode.mutate({ invoiceId: paymentInfo.invoice.id })
+            }
+          />
+        </InteractionModal>
+      )}
     </main>
   );
 }
