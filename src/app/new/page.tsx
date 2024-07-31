@@ -100,10 +100,10 @@ export default function New() {
   };
 
   return (
-    <main className="mx-auto max-w-2xl flex flex-col gap-9 w-full p-6">
+    <main className="mx-auto max-w-2xl flex flex-col gap-9 w-full p-2 md:p-6">
       <h1 className="text-center">Create a Pay Code</h1>
       <div className="flex flex-col gap-6">
-        <div className="flex flex-row gap-2 items-center justify-center">
+        <div className="flex flex-col md:flex-row gap-4 md:gap-2 items-center justify-center">
           <Button
             format="outline"
             size="small"
@@ -188,7 +188,7 @@ export default function New() {
         hidden={!optionsExpanded}
         register={register}
       />
-      <div className="flex justify-between">
+      <div className="flex flex-col md:flex-row gap-4 justify-between">
         <Button
           format="secondary"
           onClick={() => setOptionsExpanded(!optionsExpanded)}
