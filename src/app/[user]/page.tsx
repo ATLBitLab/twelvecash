@@ -10,7 +10,7 @@ export default function User({ params }: { params: { user: string } }) {
   const decoded = decodeURIComponent(params.user);
   const [user, domain] = decoded.split("@");
   return (
-    <main className="mx-auto max-w-4xl flex flex-col gap-9 w-full text-center p-6">
+    <main className="mx-auto max-w-4xl flex flex-col gap-9 w-full text-center p-2 md:p-6">
       <UserDetails user={user} domain={domain} />
       <hr className="border-purple-800/50" />
       <Button href="/search" format="outline" size="large">

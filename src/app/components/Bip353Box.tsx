@@ -8,10 +8,12 @@ type Bip353BoxProps = {
 }
 
 export default function Bip353Box(props:Bip353BoxProps){
+    let className = `bg-blue-900 text-white text-2xl md:text-4xl px-2 py-6 md:p-9 rounded-xl font-light overflow-x-hidden`;
+
     if(props.users.length === 1){
         return(
             <>
-                <div className="bg-blue-900 text-white text-4xl p-9 rounded-xl font-light overflow-x-hidden">
+                <div className={className}>
                     <p className="flex flex-row gap-2 w-full justify-between">
                     <span className={inter.className + " text-orange-200"}>₿</span>
                     <span className="whitespace-nowrap overflow-ellipsis overflow-hidden w-full text-left">{props.users[0].user}</span>
@@ -24,7 +26,7 @@ export default function Bip353Box(props:Bip353BoxProps){
     else {
         return(
             <>
-                <div className="bg-blue-900 text-white text-4xl p-9 rounded-xl font-light overflow-hidden">
+                <div className={className}>
                     <p className="flex flex-row gap-2 w-full justify-between">
                     <span className={inter.className + " text-orange-200"}>₿</span>
                     
