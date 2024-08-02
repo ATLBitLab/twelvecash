@@ -19,7 +19,7 @@ export default function Home() {
   ];
   return (
     <HydrateClient>
-      <main className="mx-auto max-w-4xl flex flex-col gap-9 w-full text-center p-6">
+      <main className="mx-auto max-w-4xl flex flex-col gap-9 w-full text-center p-2 md:p-6">
         <div>
           <TwelveCashLogo size="large" />
         </div>

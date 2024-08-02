@@ -39,7 +39,7 @@ export default function NewUser({ params }: { params: { user: string } }){
 
     return(
         <>
-            <main className="mx-auto max-w-4xl flex flex-col gap-9 w-full text-center p-6">
+            <main className="mx-auto max-w-4xl flex flex-col gap-9 w-full text-center p-2 md:p-6">
             <Confetti
                 width={windowSize.width-20}
                 height={windowSize.height}
@@ -49,11 +49,11 @@ export default function NewUser({ params }: { params: { user: string } }){
                 <h1>Pay code created!</h1>
                 <p className="text-xl">Your pay code is created, but it may take 5-10 minutes for the pay code to work. Enjoy!</p>
                 <Bip353Box users={[{user, domain}]} />
-                <div className={`flex flex-row gap-4`}>
-                    <div className="flex w-1/2">
+                <div className={`flex flex-col md:flex-row gap-4`}>
+                    <div className="flex md:w-1/2">
                         <CopyUserLinkButton link={'https://twelve.cash/' + user + '@' + domain} />
                     </div>
-                    <div className="flex w-1/2">
+                    <div className="flex md:w-1/2">
                         <CopyBip353Button user={user} domain={domain} />
                     </div>
                 </div>

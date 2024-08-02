@@ -10,7 +10,7 @@ export default async function Account() {
   const user = getUser();
   if (!user) {
     return (
-      <main className="max-w-2xl mx-auto text-center flex flex-col gap-4 justify-center items-center p-6">
+      <main className="max-w-2xl mx-auto text-center flex flex-col gap-4 justify-center items-center p-2 md:p-6">
         <div className="w-full flex flex-row justify-between items-center">
           <h1>You are Logged Out</h1>
           <Button href="/auth">Login</Button>
@@ -20,7 +20,7 @@ export default async function Account() {
   }
   const paycodes = await api.payCode.getUserPaycodes();
   return (
-    <main className="max-w-2xl mx-auto text-center flex flex-col gap-4 justify-center items-center p-6">
+    <main className="max-w-2xl mx-auto text-center flex flex-col gap-4 justify-center items-center p-2 md:p-6">
       <div className="w-full flex flex-row justify-between items-center">
         <h1>Your Acount</h1>
         <LogoutButton />

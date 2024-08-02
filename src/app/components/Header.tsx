@@ -3,41 +3,28 @@ import {
   PlusIcon,
   SearchIcon,
   WalletIcon,
-  ContactsIcon
+  ContactsIcon,
+  MenuIcon
 } from "@bitcoin-design/bitcoin-icons-react/filled";
-// import {ContactsIcon} from "@bitcoin-design/bitcoin-icons-react/outline";
+import { useState } from "react";
 import Button from "./Button";
 import TwelveCashLogo from "./TwelveCashLogo";
 import { useUser } from "./ClientUserProvider";
 
 export default function Header() {
   const user = useUser();
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
-    <header className="border-b border-b-white/40 p-5 flex justify-between items-center gap-4 flex-row sticky top-0 backdrop-blur-2xl">
+    <header className="border-b border-b-white/40 p-5 flex flex-wrap justify-between items-center gap-4 flex-row sticky top-0 backdrop-blur-2xl">
       <div className="flex flex-col items-center">
         <div className="scale-75 origin-left sm:scale-100">
           <TwelveCashLogo />
         </div>
       </div>
-      <nav className="w-full flex flex-row items-center gap-2 justify-end sm:hidden">
-        <Button href="/search" size="small" format="secondary">
-          Check <SearchIcon className="w-6 h-6" />
-        </Button>
-        <Button href="/new" size="small">
-          New <PlusIcon className="w-6 h-6" />
-        </Button>
-        {user.user ? (
-          <Button href="/account" size="small">
-            Account
-            <WalletIcon className="w-6 h-6" />
-          </Button>
-        ) : (
-          <Button href="/auth" size="small">
-            Auth <ContactsIcon className="w-6 h-6" />
-          </Button>
-        )}
-      </nav>
-      <nav className="w-full flex-row items-center gap-2 justify-end hidden sm:flex">
+      <Button size="medium" format="free" onClick={()=>{setMenuOpen(!menuOpen)}} className="sm:hidden">
+        <span className="sr-only">Show Menu</span> <MenuIcon className="w-8 h-8" />
+      </Button>
+      <nav className={`${!menuOpen ? 'max-sm:hidden ': ''} flex flex-col items-end max-sm:w-full sm:items-center gap-2 justify-end sm:flex-row`}>
         <Button href="/search" size="medium" format="free">
           Check <SearchIcon className="w-6 h-6" />
         </Button>
@@ -55,6 +42,7 @@ export default function Header() {
           </Button>
         )}
       </nav>
+      
     </header>
   );
 }

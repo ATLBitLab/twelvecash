@@ -13,7 +13,7 @@ export default function PaymentDetail(props:PaymentDetailProps){
 
     return(
         <>
-            <div className="w-full bg-sky-700 text-white rounded-xl p-6 flex flex-row items-center gap-6 text-4xl font-light drop-shadow-md relative overflow-hidden">
+            <div className="w-full bg-sky-700 text-white rounded-xl pr-2 pl-4 py-4 md:p-6 flex flex-row items-center gap-6 text-2xl md:text-4xl font-light drop-shadow-md relative overflow-hidden">
                 {props.loading ?
                 <>
                     <dt className="bg-orange-200/10 rounded-lg flex-none text-left">
