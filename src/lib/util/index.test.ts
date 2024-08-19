@@ -1,3 +1,6 @@
+import { PayCodeParamType } from "@prisma/client";
+import { createBip21FromParams, Param } from ".";
+
 const { lnAddrToLNURL, createBip21 } = require("./index");
 
 test("try using different lightning address inputs", () => {
@@ -128,5 +131,93 @@ test.each(testCases)(
   }
 );
 
-// TODO: test this
-// createBip21FromParams
+const onChainParam: Param = {
+  prefix: null,
+  value: onChain,
+  type: PayCodeParamType.ONCHAIN,
+};
+const labelParam: Param = {
+  prefix: null,
+  value: label,
+  type: PayCodeParamType.LABEL,
+};
+const spParam: Param = {
+  prefix: null,
+  value: sp,
+  type: PayCodeParamType.SP,
+};
+const lnoParam: Param = {
+  prefix: null,
+  value: lno,
+  type: PayCodeParamType.LNO,
+};
+const lnurlParam: Param = {
+  prefix: null,
+  value: lnurl,
+  type: PayCodeParamType.LNURL,
+};
+const customParam1: Param = {
+  prefix: "apple",
+  value: "banana",
+  type: PayCodeParamType.CUSTOM,
+};
+const customParam2: Param = {
+  prefix: "coconut",
+  value: "tree",
+  type: PayCodeParamType.CUSTOM,
+};
+const createBip21FromParamsTestCases = [
+  { input: [], expected: "No parameters", shouldThrow: true },
+  {
+    input: [spParam],
+    expected: `bitcoin:?sp=${spParam.value}`,
+    shouldThrow: false,
+  },
+  {
+    // no label if no onChain address
+    input: [spParam, labelParam],
+    expected: `bitcoin:?sp=${spParam.value}`,
+    shouldThrow: false,
+  },
+  {
+    input: [lnurlParam, lnoParam],
+    expected: `bitcoin:?lnurl=${lnurlParam.value}&lno=${lnoParam.value}`,
+    shouldThrow: false,
+  },
+  {
+    input: [customParam1],
+    expected: `bitcoin:?${customParam1.prefix}=${customParam1.value}`,
+    shouldThrow: false,
+  },
+  {
+    input: [onChainParam],
+    expected: `bitcoin:${onChainParam.value}`,
+    shouldThrow: false,
+  },
+  {
+    input: [onChainParam, labelParam],
+    expected: `bitcoin:${onChainParam.value}?label=${labelParam.value}`,
+    shouldThrow: false,
+  },
+  {
+    input: [onChainParam, spParam],
+    expected: `bitcoin:${onChainParam.value}?sp=${spParam.value}`,
+    shouldThrow: false,
+  },
+  {
+    input: [onChainParam, customParam2, customParam1],
+    expected: `bitcoin:${onChainParam.value}?${customParam2.prefix}=${customParam2.value}&${customParam1.prefix}=${customParam1.value}`,
+    shouldThrow: false,
+  },
+];
+
+test.each(createBip21FromParamsTestCases)(
+  "createBip21FromParams should return $expected",
+  ({ input, expected, shouldThrow }) => {
+    if (shouldThrow) {
+      expect(() => createBip21FromParams(input)).toThrow(expected);
+    } else {
+      expect(createBip21FromParams(input)).toBe(expected);
+    }
+  }
+);

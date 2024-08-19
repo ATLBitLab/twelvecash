@@ -96,18 +96,17 @@ export const createPayCodeParams = (
   return create;
 };
 
-type Param = {
+export type Param = {
   prefix: string | null;
   value: string;
   type: PayCodeParamType;
 };
 
 export const createBip21FromParams = (params: Param[]) => {
+  if (params.length === 0) throw new Error("No parameters");
   const base = "bitcoin:";
   const url = new URL(base);
   for (let param of params) {
-    if (param.type === PayCodeParamType.LABEL)
-      url.searchParams.append("label", param.value);
     if (param.type === PayCodeParamType.LNO)
       url.searchParams.append("lno", param.value);
     if (param.type === PayCodeParamType.SP)
@@ -122,15 +121,15 @@ export const createBip21FromParams = (params: Param[]) => {
       const onChainUrl = new URL(`${base}${param.value}`);
       for (let innerParam of params) {
         if (innerParam.type === PayCodeParamType.LABEL)
-          url.searchParams.append("label", innerParam.value);
+          onChainUrl.searchParams.append("label", innerParam.value);
         if (innerParam.type === PayCodeParamType.LNO)
-          url.searchParams.append("lno", innerParam.value);
+          onChainUrl.searchParams.append("lno", innerParam.value);
         if (innerParam.type === PayCodeParamType.SP)
-          url.searchParams.append("sp", innerParam.value);
+          onChainUrl.searchParams.append("sp", innerParam.value);
         if (innerParam.type === PayCodeParamType.LNURL)
-          url.searchParams.append("lnurl", innerParam.value);
+          onChainUrl.searchParams.append("lnurl", innerParam.value);
         if (innerParam.type === PayCodeParamType.CUSTOM)
-          url.searchParams.append(innerParam.prefix!, param.value);
+          onChainUrl.searchParams.append(innerParam.prefix!, innerParam.value);
       }
       return onChainUrl.toString();
     }
