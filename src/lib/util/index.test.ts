@@ -15,10 +15,11 @@ const lno =
   "lno1qsgqmqvgm96frzdg8m0gc6nzeqffvzsqzrxqy32afmr3jn9ggkwg3egfwch2hy0l6jut6vfd8vpsc3h89l6u3dm4q2d6nuamav3w27xvdmv3lpgklhg7l5teypqz9l53hj7zvuaenh34xqsz2sa967yzqkylfu9xtcd5ymcmfp32h083e805y7jfd236w9afhavqqvl8uyma7x77yun4ehe9pnhu2gekjguexmxpqjcr2j822xr7q34p078gzslf9wpwz5y57alxu99s0z2ql0kfqvwhzycqq45ehh58xnfpuek80hw6spvwrvttjrrq9pphh0dpydh06qqspp5uq4gpyt6n9mwexde44qv7lstzzq60nr40ff38u27un6y53aypmx0p4qruk2tf9mjwqlhxak4znvna5y";
 const sp =
   "sp1qqweplq6ylpfrzuq6hfznzmv28djsraupudz0s0dclyt8erh70pgwxqkz2ydatksrdzf770umsntsmcjp4kcz7jqu03jeszh0gdmpjzmrf5u4zh0c";
+const lnurl =
+  "lnurl1dp68gurn8ghj7um5wf5kkefwd4jj7tnhv4kxctttdehhwm30d3h82unvwqhkx6rpvsclqksp";
 const custom1 = {
-  prefix: "lnurl",
-  value:
-    "lnurl1dp68gurn8ghj7um5wf5kkefwd4jj7tnhv4kxctttdehhwm30d3h82unvwqhkx6rpvsclqksp",
+  prefix: "someCustom",
+  value: "someCustomValue",
 };
 const custom2 = {
   prefix: "chad",
@@ -88,23 +89,41 @@ const testCases = [
       lno: "lno123...xyz",
       sp: "sp123...xyz",
       onChain: "bc1p...xyz",
+      lnurl: "lnurl...xyz",
       custom: [
-        { prefix: "lnurl", value: "lnur123...xyz" },
+        { prefix: "food", value: "yum" },
         { prefix: "veggie", value: "carrot" },
       ],
     },
-    expected: `bitcoin:bc1p...xyz?lno=lno123...xyz&sp=sp123...xyz&lnurl=lnur123...xyz&veggie=carrot`,
+    expected: `bitcoin:bc1p...xyz?lno=lno123...xyz&sp=sp123...xyz&lnurl=lnurl...xyz&food=yum&veggie=carrot`,
     shouldThrow: false,
   },
 ];
-// TODO: Fix
 test.each(testCases)(
   "createBip21($input) should return $expected",
   ({ input, expected, shouldThrow }) => {
     if (shouldThrow) {
-      expect(() => createBip21(input)).toThrow(expected);
+      expect(() =>
+        createBip21(
+          input.onChain,
+          input.label,
+          input.lno,
+          input.sp,
+          input.lnurl,
+          input.custom
+        )
+      ).toThrow(expected);
     } else {
-      expect(createBip21(input)).toBe(expected);
+      expect(
+        createBip21(
+          input.onChain,
+          input.label,
+          input.lno,
+          input.sp,
+          input.lnurl,
+          input.custom
+        )
+      ).toBe(expected);
     }
   }
 );
