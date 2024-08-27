@@ -278,7 +278,7 @@ export const payCodeRouter = createTRPCRouter({
       }
 
       // TODO: calculate price
-      const priceMsats = 1000000;
+      const priceMsats = 5000000;
       let invoice;
 
       try {

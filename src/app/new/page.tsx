@@ -110,7 +110,7 @@ export default function New() {
             active={!freeName}
             onClick={() => setFreeName(!freeName)}
           >
-            Choose a Name (1000 sats)
+            Choose a Name (5,000 sats)
           </Button>
           <Button
             format="outline"
@@ -217,7 +217,7 @@ export default function New() {
         >
           <div className="flex flex-row justify-between items-center mb-4">
             <p className="text-center text-2xl mb-0 font-semibold">
-              1,000 sats
+              5,000 sats
             </p>
             <div className="flex flex-row gap-1 items-center justify-end font-bold">
               Awaiting Payment <RefreshIcon className="w-6 h-6 animate-spin" />
