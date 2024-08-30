@@ -2,6 +2,8 @@ import { z } from "zod";
 
 export const DOMAINS = ["twelve.cash", "12cash.dev"] as const;
 
+export type TwelveCashDomains = typeof DOMAINS[number];
+
 const Custom = z.object({
   prefix: z.string(),
   value: z.string(),
