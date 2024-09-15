@@ -43,7 +43,7 @@ The expected output should be:
 
 ## Validate a User Name
 
-For this, we rely on the [dnssec-prover tool](https://github.com/TheBlueMatt/dnssec-prover) from TheBlueMatt. THis (or something like it) should be built into any tool that facilitates payments to Twelve Cash addresses. However, we have exposed this on our website frontend so you can experiment and validate these addresses.
+For this, we rely on the [dnssec-prover tool](https://github.com/TheBlueMatt/dnssec-prover) from TheBlueMatt. This (or something like it) should be built into any tool that facilitates payments to Twelve Cash addresses. However, we have exposed this on our website frontend so you can experiment and validate these addresses.
 
 ## Roadmap
 
