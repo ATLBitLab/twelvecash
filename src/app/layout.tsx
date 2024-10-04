@@ -8,10 +8,26 @@ import Header from "./components/Header";
 
 const urbanist = Urbanist({ subsets: ["latin"] });
 
+const title = "TwelveCash | Simple Bitcoin Usernames"
+const description = "Get your own TwelveCash address. Supports BOLT 12 offers, Silent payments, and more!"
+const poster = "https://twelve.cash/twelve-cash-poster.png"
+
 export const metadata: Metadata = {
-  title: "Twelve Cash",
-  description: "Simple Bitcoin User Name",
-};
+  title: title,
+  description: description,
+  icons: [{ url: '/twelvecash-favicon.png', rel: 'icon' }],
+  openGraph: {
+      title: title,
+      description: description,
+      images: [{ url: poster }],
+  },
+  twitter: {
+      site: "TwelveCash",
+      description: description,
+      title: title,
+      images: poster
+  }
+}
 
 export default function RootLayout({
   children,
