@@ -183,13 +183,13 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
             />
             <Input
             name="lnurl"
-            label="LNURL Pay (or Lightning Address)"
+            label="LNURL Pay"
             description={
                 errors.lnurl
                 ? errors.lnurl.message
                 : "You can add in LNURL information for services that do not support these other methods."
             }
-            placeholder="lnurl123...xyz / user@strike.me"
+            placeholder="lnurl123...xyz"
             hidden={!optionsExpanded}
             register={register}
             />
