@@ -1,5 +1,7 @@
+import { PayCodeParamType } from "@prisma/client";
 import { bech32 } from "bech32";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
 export const lnAddrToLNURL = (lnaddr: string) => {
   const [username, domain] = lnaddr.split("@");
@@ -31,17 +33,25 @@ export type Bip353 = {
   domain: string;
 };
 
-export const createBip21 = (payload: Bip21Dict): string => {
-  const base = payload.onChain ? `bitcoin:${payload.onChain}` : "bitcoin:";
+// TODO: Fix unit tests
+export const createBip21 = (
+  onChain?: string,
+  label?: string,
+  lno?: string,
+  sp?: string,
+  lnurl?: string,
+  custom?: Custom[]
+): string => {
+  const base = onChain ? `bitcoin:${onChain}` : "bitcoin:";
   const url = new URL(base);
 
-  if (payload.label && payload.onChain)
-    url.searchParams.append("label", payload.label);
-  if (payload.lno) url.searchParams.append("lno", payload.lno);
-  if (payload.sp) url.searchParams.append("sp", payload.sp);
+  if (label && onChain) url.searchParams.append("label", label);
+  if (lno) url.searchParams.append("lno", lno);
+  if (sp) url.searchParams.append("sp", sp);
+  if (lnurl) url.searchParams.append("lnurl", lnurl);
 
-  if (Array.isArray(payload.custom)) {
-    payload.custom.forEach((item: Custom) => {
+  if (Array.isArray(custom)) {
+    custom.forEach((item: Custom) => {
       url.searchParams.append(item.prefix, item.value);
     });
   }
@@ -52,6 +62,79 @@ export const createBip21 = (payload: Bip21Dict): string => {
     throw new Error("Bip21 URI is greater than 2048 characters");
 
   return bip21;
+};
+
+export const createPayCodeParams = (
+  onChain?: string,
+  label?: string,
+  lno?: string,
+  sp?: string,
+  lnurl?: string,
+  custom?: Custom[]
+): Prisma.PayCodeParamCreateWithoutPayCodeInput[] => {
+  let create: Prisma.PayCodeParamCreateWithoutPayCodeInput[] = [];
+  if (onChain) create.push({ value: onChain, type: PayCodeParamType.ONCHAIN });
+  if (label) create.push({ value: label, type: PayCodeParamType.LABEL });
+  if (lno) create.push({ value: lno, type: PayCodeParamType.LNO });
+  if (sp) create.push({ value: sp, type: PayCodeParamType.SP });
+  if (lnurl) create.push({ value: lnurl, type: PayCodeParamType.LNURL });
+
+  if (Array.isArray(custom)) {
+    custom.forEach((item: Custom) => {
+      create.push({
+        prefix: item.prefix,
+        value: item.value,
+        type: PayCodeParamType.CUSTOM,
+      });
+    });
+  }
+
+  if (create.length == 0) {
+    throw new Error("No parameters provided");
+  }
+
+  return create;
+};
+
+export type Param = {
+  prefix: string | null;
+  value: string;
+  type: PayCodeParamType;
+};
+
+export const createBip21FromParams = (params: Param[]) => {
+  if (params.length === 0) throw new Error("No parameters");
+  const base = "bitcoin:";
+  const url = new URL(base);
+  for (let param of params) {
+    if (param.type === PayCodeParamType.LNO)
+      url.searchParams.append("lno", param.value);
+    if (param.type === PayCodeParamType.SP)
+      url.searchParams.append("sp", param.value);
+    if (param.type === PayCodeParamType.LNURL)
+      url.searchParams.append("lnurl", param.value);
+    if (param.type === PayCodeParamType.CUSTOM)
+      url.searchParams.append(param.prefix!, param.value);
+
+    // lol
+    if (param.type === PayCodeParamType.ONCHAIN) {
+      const onChainUrl = new URL(`${base}${param.value}`);
+      for (let innerParam of params) {
+        if (innerParam.type === PayCodeParamType.LABEL)
+          onChainUrl.searchParams.append("label", innerParam.value);
+        if (innerParam.type === PayCodeParamType.LNO)
+          onChainUrl.searchParams.append("lno", innerParam.value);
+        if (innerParam.type === PayCodeParamType.SP)
+          onChainUrl.searchParams.append("sp", innerParam.value);
+        if (innerParam.type === PayCodeParamType.LNURL)
+          onChainUrl.searchParams.append("lnurl", innerParam.value);
+        if (innerParam.type === PayCodeParamType.CUSTOM)
+          onChainUrl.searchParams.append(innerParam.prefix!, innerParam.value);
+      }
+      return onChainUrl.toString();
+    }
+  }
+  return url.toString();
 };
 
 export function getZodEnumFromObjectKeys<

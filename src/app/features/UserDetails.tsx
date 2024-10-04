@@ -55,11 +55,11 @@ export default function UserDetails(props:Bip353){
                 {validPayCode ? "Valid Paycode" : validPayCode === null ? "Checking..." : "Invalid Paycode"}
             </h1>
             <Bip353Box users={[{user:props.user, domain: props.domain}]} />
-            <div className={`flex flex-row gap-4 ${!uri ? 'pointer-events-none opacity-75' : ''}`}>
-                <div className="flex w-1/2">
+            <div className={`flex flex-col md:flex-row gap-4 ${!uri ? 'pointer-events-none opacity-75' : ''}`}>
+                <div className="flex md:w-1/2">
                   <CopyUserLinkButton link={'https://twelve.cash/' + props.user + '@' + props.domain} />
                 </div>
-                <div className="flex w-1/2">
+                <div className="flex md:w-1/2">
                   <CopyBip353Button user={props.user} domain={props.domain} />
                 </div>
             </div>

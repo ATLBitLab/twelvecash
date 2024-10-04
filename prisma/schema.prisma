@@ -1,0 +1,106 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  lastLogin       DateTime?
+  nostrPublicKey  String?   @unique
+  lnNodePublicKey String?   @unique
+  apiKey          String    @default(uuid())
+  payCode         PayCode[]
+  Invoice         Invoice[]
+}
+
+model UserAuth {
+  id            String   @id @default(uuid())
+  createdAt     DateTime @default(now())
+  challengeHash String   @unique
+}
+
+model PayCode {
+  id        String         @id @default(uuid())
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  expires   DateTime?
+  status    PayCodeStatus
+  label     String?
+  domain    String
+  userName  String // should not be unique so people can get an expired username
+  params    PayCodeParam[]
+  user      User?          @relation(fields: [userId], references: [id])
+  userId    String?
+  // single or array? one can time out... but could make a new PayCode per request
+  // would check valid paycodes by looking at invoice redemption status
+  invoices  Invoice[]
+}
+
+enum PayCodeStatus {
+  PENDING // Pending payment
+  ACTIVE
+  EXPIRED // would need to ensure the actual records are removed, cron job could set this
+  REVOKED
+}
+
+model PayCodeParam {
+  id        String           @id @default(uuid())
+  prefix    String? // used for custom type
+  value     String
+  type      PayCodeParamType
+  payCode   PayCode          @relation(fields: [payCodeId], references: [id])
+  payCodeId String
+}
+
+enum PayCodeParamType {
+  ONCHAIN
+  LABEL
+  LNO
+  SP
+  LNURL
+  CUSTOM
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  confirmedAt   DateTime?
+  maxAgeSeconds Int
+  description   String
+  status        InvoiceStatus
+  kind          InvoiceKind
+  hash          String        @unique
+  bolt11        String?
+  // always bolt 11? Don't need a bolt12 lni if we are generating an invoice
+  bolt12        String?
+  mSatsTarget   Int
+  mSatsSettled  Int?
+  redeemed      Boolean       @default(false)
+  user          User?         @relation(fields: [userId], references: [id])
+  userId        String?
+  payCode       PayCode       @relation(fields: [payCodeId], references: [id])
+  payCodeId     String
+}
+
+enum InvoiceKind {
+  PURCHASE
+  RENEWAL
+}
+
+enum InvoiceStatus {
+  OPEN
+  // The actual LN invoice can be settled, but not reflected here
+  SETTLED
+  CANCELED
+  ACCEPTED
+}
