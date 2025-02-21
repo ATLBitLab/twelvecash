@@ -16,6 +16,15 @@ export default async function Image({ params }: { params: { user: string } }) {
     const decoded = decodeURIComponent(params.user)
     const [user, domain] = decoded.split("@")
 
+    // Load the font files from the public directory
+    const urbanistData = await fetch(
+      new URL('/fonts/urbanist/Urbanist-Regular.ttf', process.env.NEXT_PUBLIC_URL || 'http://localhost:3000')
+    ).then((res) => res.arrayBuffer())
+
+    const urbanistBoldData = await fetch(
+      new URL('/fonts/urbanist/Urbanist-Bold.ttf', process.env.NEXT_PUBLIC_URL || 'http://localhost:3000')
+    ).then((res) => res.arrayBuffer())
+
     return new ImageResponse(
       (
         <div
@@ -32,7 +41,7 @@ export default async function Image({ params }: { params: { user: string } }) {
             paddingBottom: 300,
             paddingTop: 300,
             position: 'relative',
-            fontFamily: 'Urbanist, sans-serif',
+            fontFamily: 'Urbanist',
             gap: 48
           }}
         >
@@ -43,7 +52,8 @@ export default async function Image({ params }: { params: { user: string } }) {
               right: 36,
               color: '#ffffff',
               fontSize: 48,
-              display: 'flex'
+              display: 'flex',
+              fontFamily: 'Urbanist'
           }}>
               TwelveCash
           </div>
@@ -57,7 +67,8 @@ export default async function Image({ params }: { params: { user: string } }) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 36
+            fontSize: 36,
+            fontFamily: 'Urbanist'
           }}>
             Placeholder for Image
           </div>
@@ -75,7 +86,8 @@ export default async function Image({ params }: { params: { user: string } }) {
               margin: 0,
               position: 'absolute',
               left: -112,
-              top: -124
+              top: -124,
+              fontFamily: 'Urbanist'
             }}>
               *
             </p>
@@ -84,7 +96,7 @@ export default async function Image({ params }: { params: { user: string } }) {
             <p style={{
               fontSize: 80,
               fontWeight: 'bold',
-              fontFamily: 'Urbanist, sans-serif',
+              fontFamily: 'Urbanist',
               maxWidth: 800,
               display: 'flex',
               margin: 0
@@ -100,7 +112,7 @@ export default async function Image({ params }: { params: { user: string } }) {
               <p
                 style={{
                   fontSize: 60,
-                  fontWeight: 'bold',
+                  fontWeight: 'normal',
                   color: '#000',
                   marginBottom: 20,
                   background: '#8cf506',
@@ -108,7 +120,8 @@ export default async function Image({ params }: { params: { user: string } }) {
                   padding: 24,
                   paddingLeft: 48,
                   paddingRight: 48,
-                  flex: 'none'
+                  flex: 'none',
+                  fontFamily: 'Urbanist'
                 }}
               >
                 {user}@{domain && domain}
@@ -123,7 +136,8 @@ export default async function Image({ params }: { params: { user: string } }) {
               left: 36,
               color: '#ffffff',
               fontSize: 24,
-              display: 'flex'
+              display: 'flex',
+              fontFamily: 'Urbanist'
           }}>
             No rights reserved! Freedom forever!&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Try TwelveCash now. Like right now.
           </div>
@@ -131,6 +145,20 @@ export default async function Image({ params }: { params: { user: string } }) {
       ),
       {
         ...size,
+        fonts: [
+          {
+            name: 'Urbanist',
+            data: urbanistData,
+            weight: 400,
+            style: 'normal',
+          },
+          {
+            name: 'Urbanist',
+            data: urbanistBoldData,
+            weight: 700,
+            style: 'normal',
+          }
+        ],
       }
     )
   } catch (e) {
