@@ -5,8 +5,8 @@ export const runtime = 'edge'
 export const revalidate = 0
 export const alt = 'TwelveCash User Profile'
 export const size = {
-  width: 1200,
-  height: 630,
+  width: 1920,
+  height: 1080,
 }
 export const contentType = 'image/png'
 
@@ -20,7 +20,7 @@ export default async function Image({ params }: { params: { user: string } }) {
       (
         <div
           style={{
-            background: 'linear-gradient(to bottom right, #4c1d95, #2e1065)',
+            background: '#000000',
             width: '100%',
             height: '100%',
             display: 'flex',
@@ -28,30 +28,44 @@ export default async function Image({ params }: { params: { user: string } }) {
             alignItems: 'center',
             justifyContent: 'center',
             padding: '40px',
+            position: 'relative',
+            fontFamily: 'Urbanist, sans-serif'
           }}
         >
+          <div style={{
+              position: 'absolute',
+              top: 36,
+              right: 36,
+              color: '#ffffff',
+              fontSize: 48
+          }}>
+              TwelveCash
+          </div>
           <div
             style={{
               display: 'flex',
               fontSize: 60,
               fontWeight: 'bold',
-              color: 'white',
+              color: '#000',
               marginBottom: 20,
+              background: '#8cf506',
+              borderRadius: 100,
+              padding: 24,
+              paddingLeft: 48,
+              paddingRight: 48,
             }}
           >
-            {user}
+            {user}@{domain && domain}
           </div>
-          {domain && (
-            <div
-              style={{
-                display: 'flex',
-                fontSize: 40,
-                color: '#e4e4e7',
-              }}
-            >
-              @{domain}
-            </div>
-          )}
+          <div style={{
+              position: 'absolute',
+              bottom: 36,
+              left: 36,
+              color: '#ffffff',
+              fontSize: 24
+          }}>
+            No rights reserved! Freedom forever!&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Try TwelveCash now. Like right now.
+          </div>
         </div>
       ),
       {
