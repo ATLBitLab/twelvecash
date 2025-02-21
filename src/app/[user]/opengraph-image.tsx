@@ -21,10 +21,11 @@ export default async function Image({ params }: { params: { user: string } }) {
         <div
           style={{
             background: '#000000',
+            color: '#ffffff',
             width: '100%',
             height: '100%',
             display: 'flex',
-            flexDirection: 'column',
+            flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
             padding: '40px',
@@ -32,6 +33,7 @@ export default async function Image({ params }: { params: { user: string } }) {
             fontFamily: 'Urbanist, sans-serif'
           }}
         >
+          {/* Logotype */}
           <div style={{
               position: 'absolute',
               top: 36,
@@ -41,22 +43,60 @@ export default async function Image({ params }: { params: { user: string } }) {
           }}>
               TwelveCash
           </div>
-          <div
-            style={{
-              display: 'flex',
-              fontSize: 60,
-              fontWeight: 'bold',
-              color: '#000',
-              marginBottom: 20,
-              background: '#8cf506',
-              borderRadius: 100,
-              padding: 24,
-              paddingLeft: 48,
-              paddingRight: 48,
-            }}
-          >
-            {user}@{domain && domain}
+
+          {/* Image */}
+          <div style={{
+            background: '#8cf506',
+            width: 448,
+            height: 448,
+            color: '#000',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 36
+          }}>
+            Placeholder for Image
           </div>
+
+
+          <div>
+            {/* Asterisk */}
+            <p style={{
+              fontSize: 200
+            }}>
+              *
+            </p>
+
+            {/* Slogan */}
+            <p style={{
+              fontSize: 80,
+              fontWeight: 'bold',
+              fontFamily: 'Urbanist, sans-serif',
+              maxWidth: 800
+            }}>
+              The best bitcoin transaction ever?
+            </p>
+
+            {/* Username */}
+            <div
+              style={{
+                display: 'flex',
+                fontSize: 60,
+                fontWeight: 'bold',
+                color: '#000',
+                marginBottom: 20,
+                background: '#8cf506',
+                borderRadius: 100,
+                padding: 24,
+                paddingLeft: 48,
+                paddingRight: 48,
+              }}
+            >
+              {user}@{domain && domain}
+            </div>
+          </div>
+
+          {/* Legal Text */}
           <div style={{
               position: 'absolute',
               bottom: 36,
