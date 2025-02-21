@@ -81,12 +81,12 @@ export default async function Image({ params }: { params: { user: string } }) {
           }}>
             {/* Asterisk */}
             <p style={{
-              fontSize: 200,
+              fontSize: 224,
               display: 'flex',
               margin: 0,
               position: 'absolute',
-              left: -112,
-              top: -124,
+              left: -80,
+              top: -96,
               fontFamily: 'Urbanist'
             }}>
               *
