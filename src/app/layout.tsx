@@ -15,7 +15,7 @@ const poster = "https://twelve.cash/twelve-cash-poster.png"
 export const metadata: Metadata = {
   title: title,
   description: description,
-  icons: [{ url: '/twelvecash-favicon.png', rel: 'icon' }],
+  icons: [{ url: '/favicon.ico', rel: 'icon' }],
   openGraph: {
       title: title,
       description: description,
