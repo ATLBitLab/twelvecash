@@ -6,7 +6,7 @@ export default function Auth() {
   if (user) {
     return (
       <div>
-        <p>You shouldn't be here</p>
+        <p>You shouldn&apos;t be here</p>
       </div>
     );
   }
