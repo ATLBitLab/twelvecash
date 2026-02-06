@@ -23,7 +23,7 @@ import {
   uniqueNamesGenerator,
 } from "unique-names-generator";
 import { z } from "zod";
-import { createInvoice, lookupInvoice } from "@/server/lnd";
+import { createPayCodeCheckout, verifyCheckoutPaid } from "@/server/mdk";
 
 const domainMap = JSON.parse(process.env.DOMAINS!);
 
@@ -121,7 +121,7 @@ export const payCodeRouter = createTRPCRouter({
         });
       }
 
-      let create = [];
+      let create: Prisma.PayCodeParamCreateWithoutPayCodeInput[] = [];
       try {
         create = createPayCodeParams(
           input.onChain,
@@ -260,7 +260,7 @@ export const payCodeRouter = createTRPCRouter({
         });
       }
 
-      let create = [];
+      let create: Prisma.PayCodeParamCreateWithoutPayCodeInput[] = [];
       try {
         create = createPayCodeParams(
           input.onChain,
@@ -277,39 +277,16 @@ export const payCodeRouter = createTRPCRouter({
         });
       }
 
-      // TODO: calculate price
-      const priceMsats = 5000000;
-      let invoice;
+      // Price: 5000 sats for a pay code
+      const priceSats = 5000;
 
-      try {
-        invoice = await createInvoice(priceMsats, "Purchase pay code.");
-      } catch (e: any) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create invoice",
-        });
-      }
-
-      // finally, create the paycode, but set to PENDING
+      // Create the paycode first (in PENDING state) to get the ID
       const data: Prisma.PayCodeCreateInput = {
         userName: input.userName,
         domain: input.domain,
         status: PayCodeStatus.PENDING,
         params: {
           create: create,
-        },
-        invoices: {
-          create: [
-            {
-              maxAgeSeconds: 600,
-              description: "purchase",
-              status: InvoiceStatus.OPEN,
-              bolt11: invoice.payment_request,
-              kind: InvoiceKind.PURCHASE,
-              hash: invoice.r_hash,
-              mSatsTarget: priceMsats,
-            },
-          ],
         },
       };
 
@@ -318,12 +295,12 @@ export const payCodeRouter = createTRPCRouter({
           connect: { id: ctx.user.id },
         };
       }
+
       const payCode = await ctx.db.payCode
         .create({
           data: data,
           include: {
             params: true,
-            invoices: true,
           },
         })
         .catch((e: any) => {
@@ -334,11 +311,52 @@ export const payCodeRouter = createTRPCRouter({
           });
         });
 
-      console.debug("paycode.invoices", payCode.invoices[0].id);
+      // Create Money Dev Kit checkout
+      let checkout;
+      try {
+        checkout = await createPayCodeCheckout(
+          priceSats,
+          payCode.id,
+          `Purchase pay code: ${input.userName}@${input.domain}`
+        );
+      } catch (e: any) {
+        // Clean up the pending paycode if checkout creation fails
+        await ctx.db.payCode.delete({ where: { id: payCode.id } });
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create checkout: " + e.message,
+        });
+      }
+
+      // Create invoice record with checkout info
+      // Note: We repurpose hash for checkoutId and bolt11 for checkoutUrl
+      const invoice = await ctx.db.invoice
+        .create({
+          data: {
+            maxAgeSeconds: 600,
+            description: "purchase",
+            status: InvoiceStatus.OPEN,
+            bolt11: checkout.checkoutUrl,
+            kind: InvoiceKind.PURCHASE,
+            hash: checkout.checkoutId,
+            mSatsTarget: priceSats * 1000, // Convert to millisats
+            payCode: {
+              connect: { id: payCode.id },
+            },
+          },
+        })
+        .catch((e: any) => {
+          console.error(e);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to create invoice record",
+          });
+        });
 
       return {
-        invoice: payCode.invoices[0],
+        invoice: invoice,
         payCodeId: payCode.id,
+        checkoutUrl: checkout.checkoutUrl,
       };
     }),
 
@@ -369,7 +387,8 @@ export const payCodeRouter = createTRPCRouter({
           message: "Invoice does not exist",
         });
       }
-      // Final states, no need for invoice lookup
+
+      // Final states, no need for checkout lookup
       if (
         invoice.status === InvoiceStatus.SETTLED ||
         invoice.status === InvoiceStatus.CANCELED
@@ -377,27 +396,30 @@ export const payCodeRouter = createTRPCRouter({
         return { status: invoice.status };
       }
 
-      let lndInvoice;
+      // Check MDK checkout status
+      // The hash field stores the checkoutId
+      let isPaid = false;
       try {
-        lndInvoice = await lookupInvoice(invoice.hash);
+        isPaid = await verifyCheckoutPaid(invoice.hash);
       } catch (e: any) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Failed to fetch invoice from lnd node",
-        });
+        console.error("Failed to verify checkout:", e);
+        // Don't throw, just return current status
+        return { status: invoice.status };
       }
-      console.debug("lndInvoice state", lndInvoice.state);
-      if (lndInvoice.status !== invoice.status) {
+
+      if (isPaid) {
         const updateInvoice = await ctx.db.invoice.update({
           where: {
             id: input.invoiceId,
           },
           data: {
-            status: lndInvoice.state, // using same strings
+            status: InvoiceStatus.SETTLED,
+            confirmedAt: new Date(),
           },
         });
         return { status: updateInvoice.status };
       }
+
       return { status: invoice.status };
     }),
 
@@ -429,6 +451,16 @@ export const payCodeRouter = createTRPCRouter({
           message: "Invoice does not exist or is already redeemed",
         });
       }
+
+      // Verify payment with MDK before redeeming
+      const isPaid = await verifyCheckoutPaid(invoice.hash);
+      if (!isPaid) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Payment has not been confirmed",
+        });
+      }
+
       // TODO: If the CF post fails, paycode should still be taken by user since they purchased it.
       // TODO: If the transaction takes long (like 5s or something) it will time out and fail...
       // can happen if ex. CF api is slow. Better way?
@@ -440,6 +472,8 @@ export const payCodeRouter = createTRPCRouter({
             },
             data: {
               redeemed: true,
+              status: InvoiceStatus.SETTLED,
+              confirmedAt: new Date(),
             },
           });
           const updatePayCode = await transactionPrisma.payCode.update({
