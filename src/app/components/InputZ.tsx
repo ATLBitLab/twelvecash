@@ -10,6 +10,7 @@ interface InputProps {
   label?: string;
   description?: string;
   hidden?: boolean;
+  error?: boolean;
 }
 
 export default function Input(props: InputProps) {
@@ -48,7 +49,7 @@ export default function Input(props: InputProps) {
             {props.append}
           </div>
         </div>
-        {props.description ? <p>{props.description}</p> : ``}
+        {props.description ? <p className={props.error ? "text-red-500 font-medium" : ""}>{props.description}</p> : ``}
       </div>
     </>
   );
