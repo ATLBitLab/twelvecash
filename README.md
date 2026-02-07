@@ -75,14 +75,14 @@ Start up the database:
 Create the Prisma client and push it to the database:
 
 ```bash
-yarn postinstall
-yarn db:push
+pnpm postinstall
+pnpm db:push
 ```
 
 Run the development server:
 
 ```bash
-yarn dev
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
