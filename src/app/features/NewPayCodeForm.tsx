@@ -61,6 +61,11 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
     onError: (err) => {
       console.error("Failed to create paycode", err);
       setIsCreating(false);
+      if (err.data?.code === "CONFLICT") {
+        setError("userName", { message: err.message });
+      } else {
+        setCheckoutError(err.message);
+      }
     },
   });
   const createRandomPaycode = api.payCode.createRandomPayCode.useMutation({
@@ -151,6 +156,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
                 description={
                     errors.userName ? errors.userName.message : "Pick your user name!"
                 }
+                error={!!errors.userName}
                 placeholder="satoshi"
                 register={register}
                 append={`@${props.defaultDomain}`}
@@ -163,6 +169,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
             description={
                 errors.lno ? errors.lno.message : "Learn more at BOLT12.org"
             }
+            error={!!errors.lno}
             placeholder="lno123...xyz"
             register={register}
             />
@@ -172,6 +179,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
             description={
                 errors.sp ? errors.sp.message : "Learn more at silentpayments.xyz"
             }
+            error={!!errors.sp}
             placeholder="sp123...xyz"
             register={register}
             />
@@ -183,6 +191,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
                 ? errors.onChain.message
                 : "Address re-use is discouraged for privacy. Consider using a silent payment address instead."
             }
+            error={!!errors.onChain}
             placeholder="bc123...xyz"
             hidden={!optionsExpanded}
             register={register}
@@ -195,6 +204,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
                 ? errors.label.message
                 : "Not all wallets support this. It allows a payee to categorize an address with a name."
             }
+            error={!!errors.label}
             placeholder="Your Name / Nym"
             hidden={!optionsExpanded}
             register={register}
@@ -207,6 +217,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
                 ? errors.lnurl.message
                 : "You can add in LNURL information for services that do not support these other methods."
             }
+            error={!!errors.lnurl}
             placeholder="lnurl123...xyz"
             hidden={!optionsExpanded}
             register={register}
