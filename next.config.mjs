@@ -1,15 +1,15 @@
 import { createRequire } from "node:module";
 import withMdkCheckout from "@moneydevkit/nextjs/next-plugin";
 
+// Validate required env vars at build time
 const require = createRequire(import.meta.url);
-const { env } = require("./src/env");
+require("./src/env");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  publicRuntimeConfig: {
-    NODE_ENV: env.NODE_ENV,
-  },
-  eslint: { ignoreDuringBuilds: !!process.env.CI },
+  eslint: { ignoreDuringBuilds: !process.env.CI },
+  // TODO: Fix outstanding type errors and remove this bypass.
+  // See: https://github.com/ATLBitLab/twelvecash/issues/TBD
   typescript: {
     ignoreBuildErrors: true,
   },
