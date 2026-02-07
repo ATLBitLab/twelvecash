@@ -7,7 +7,7 @@ import Button from "../components/Button";
 import Link from "next/link";
 
 export default async function Account() {
-  const user = getUser();
+  const user = await getUser();
   if (!user) {
     return (
       <main className="max-w-2xl mx-auto text-center flex flex-col gap-4 justify-center items-center p-2 md:p-6">

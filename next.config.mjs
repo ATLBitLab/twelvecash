@@ -12,10 +12,8 @@ const nextConfig = {
     NEXT_PUBLIC_VERCEL_URL: process.env.VERCEL_URL ?? "",
   },
   eslint: { ignoreDuringBuilds: !process.env.CI },
-  // TODO: Fix outstanding type errors and remove this bypass.
-  // See: https://github.com/ATLBitLab/twelvecash/issues/TBD
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 };
 
