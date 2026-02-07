@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Urbanist } from "next/font/google";
 import "./globals.css";
+import "@moneydevkit/nextjs/mdk-styles.css";
 
 import { TRPCReactProvider } from "@/trpc/react";
 import UserProvider from "./components/UserProvider";
