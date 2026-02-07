@@ -3,8 +3,9 @@
 const { env } = require("./src/env");
 
 /**
- * MDK Lightning native module externals (replaces @moneydevkit/nextjs/next-plugin for CJS config)
- * This prevents webpack from trying to bundle the native Lightning module.
+ * MDK Lightning native module externals
+ * These prevent webpack from trying to bundle the native Lightning module
+ * and ensure Vercel includes the binaries in the deployment.
  */
 const lightningPackage = "@moneydevkit/lightning-js";
 const binaryPackages = [
@@ -38,38 +39,30 @@ function lightningWebpackExternal(context, callback) {
 }
 
 /**
- * @link https://nextjs.org/docs/api-reference/next.config.js/introduction
+ * @type {import('next').NextConfig}
+ * @link https://nextjs.org/docs/app/api-reference/config/next-config-js
  */
 module.exports = {
-  /**
-   * Dynamic configuration available for the browser and server.
-   * Note: requires `ssr: true` or a `getInitialProps` in `_app.tsx`
-   * @link https://nextjs.org/docs/api-reference/next.config.js/runtime-configuration
-   */
   publicRuntimeConfig: {
     NODE_ENV: env.NODE_ENV,
   },
-  /** We run eslint as a separate task in CI */
   eslint: { ignoreDuringBuilds: !!process.env.CI },
-  /** We run typechecking as a separate task in CI */
   typescript: {
     ignoreBuildErrors: true,
   },
-  /** MDK: Externalize Lightning native packages from server bundle (Next.js 14 uses experimental.) */
-  experimental: {
-    serverComponentsExternalPackages: [lightningPackage, ...binaryPackages],
-  },
-  /** MDK: Include Lightning native binaries in output file tracing (for Vercel/pnpm) */
+  /** MDK: Externalize Lightning native packages from the server bundle (Next.js 15 stable API) */
+  serverExternalPackages: [lightningPackage, ...binaryPackages],
+  /** MDK: Ensure Vercel includes the Lightning native binaries in the deployment trace */
   outputFileTracingIncludes: {
-    "*": [
-      "./node_modules/@moneydevkit/lightning-js/**",
-      "./node_modules/@moneydevkit/lightning-js-*/**",
-      "./node_modules/.pnpm/@moneydevkit+lightning-js*/**",
-      "./node_modules/@moneydevkit/core/**",
-      "./node_modules/.pnpm/@moneydevkit+core*/**",
+    "/api/mdk/*": [
+      "./node_modules/@moneydevkit/lightning-js/**/*",
+      "./node_modules/@moneydevkit/lightning-js-*/**/*",
+      "./node_modules/.pnpm/@moneydevkit+lightning-js*/**/*",
+      "./node_modules/@moneydevkit/core/**/*",
+      "./node_modules/.pnpm/@moneydevkit+core*/**/*",
     ],
   },
-  /** MDK: Externalize Lightning JS from webpack on the server */
+  /** MDK: Externalize Lightning JS native addon from webpack on the server side */
   webpack: (config, { isServer }) => {
     if (isServer) {
       const existing = config.externals || [];
