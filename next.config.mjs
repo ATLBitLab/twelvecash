@@ -7,6 +7,10 @@ require("./src/env");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Expose Vercel's system VERCEL_URL as a client-safe NEXT_PUBLIC_ variable
+  env: {
+    NEXT_PUBLIC_VERCEL_URL: process.env.VERCEL_URL ?? "",
+  },
   eslint: { ignoreDuringBuilds: !process.env.CI },
   // TODO: Fix outstanding type errors and remove this bypass.
   // See: https://github.com/ATLBitLab/twelvecash/issues/TBD
