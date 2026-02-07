@@ -85,7 +85,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
     setValue,
     setError,
     trigger,
-    formState: { errors, isDirty, isValid },
+    formState: { errors, isDirty, isValid, dirtyFields },
   } = useZodForm({
     mode: "onChange",
     schema: payCodeInput,
@@ -154,9 +154,9 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
                 name="userName"
                 label="Choose a User Name"
                 description={
-                    errors.userName ? errors.userName.message : "Pick your user name!"
+                    errors.userName && dirtyFields.userName ? errors.userName.message : "Pick your user name!"
                 }
-                error={!!errors.userName}
+                error={!!errors.userName && !!dirtyFields.userName}
                 placeholder="satoshi"
                 register={register}
                 append={`@${props.defaultDomain}`}
