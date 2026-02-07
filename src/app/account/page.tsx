@@ -7,7 +7,7 @@ import Button from "../components/Button";
 import Link from "next/link";
 
 export default async function Account() {
-  const user = getUser();
+  const user = await getUser();
   if (!user) {
     return (
       <main className="max-w-2xl mx-auto text-center flex flex-col gap-4 justify-center items-center p-2 md:p-6">
@@ -31,7 +31,7 @@ export default async function Account() {
         <div>
           {paycodes.length === 0 &&
             <div className="flex flex-col gap-4 text-lg text-center border border-purple-800 rounded-xl p-6">
-              <p>You don't have any paycodes yet</p>
+              <p>You don&apos;t have any paycodes yet</p>
               <div className="inline-block">
                 <Button href="/new">Create a new paycode</Button>
               </div>

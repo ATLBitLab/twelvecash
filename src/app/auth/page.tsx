@@ -1,12 +1,12 @@
 import Button from "../components/Button";
 import getUserServer from "../components/getUserServer";
 
-export default function Auth() {
-  const user = getUserServer();
+export default async function Auth() {
+  const user = await getUserServer();
   if (user) {
     return (
       <div>
-        <p>You shouldn't be here</p>
+        <p>You shouldn&apos;t be here</p>
       </div>
     );
   }

@@ -4,12 +4,12 @@ import { headers } from "next/headers";
 import { parse } from "cookie";
 import ClientUserProvider from "./ClientUserProvider";
 
-export default function UserProvider({
+export default async function UserProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const cookieHeader = headers().get("cookie") || "";
+  const cookieHeader = (await headers()).get("cookie") || "";
   const cookies = cookieHeader ? parse(cookieHeader) : {};
   const accessToken = cookies["access-token"];
   const user = accessToken
