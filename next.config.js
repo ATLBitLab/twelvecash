@@ -55,13 +55,18 @@ module.exports = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  /** MDK: Externalize Lightning native packages from server bundle */
-  serverExternalPackages: [lightningPackage, ...binaryPackages],
-  /** MDK: Include Lightning native binaries in output file tracing */
+  /** MDK: Externalize Lightning native packages from server bundle (Next.js 14 uses experimental.) */
+  experimental: {
+    serverComponentsExternalPackages: [lightningPackage, ...binaryPackages],
+  },
+  /** MDK: Include Lightning native binaries in output file tracing (for Vercel/pnpm) */
   outputFileTracingIncludes: {
     "*": [
       "./node_modules/@moneydevkit/lightning-js/**",
       "./node_modules/@moneydevkit/lightning-js-*/**",
+      "./node_modules/.pnpm/@moneydevkit+lightning-js*/**",
+      "./node_modules/@moneydevkit/core/**",
+      "./node_modules/.pnpm/@moneydevkit+core*/**",
     ],
   },
   /** MDK: Externalize Lightning JS from webpack on the server */
