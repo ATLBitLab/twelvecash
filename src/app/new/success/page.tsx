@@ -7,6 +7,7 @@ import Button from "@/app/components/Button";
 import Link from "next/link";
 import Confetti from "react-confetti";
 import { useWindowSize } from "react-use";
+import { useCheckoutSuccess } from "@moneydevkit/nextjs";
 
 function SuccessContent() {
   const searchParams = useSearchParams();
@@ -19,19 +20,9 @@ function SuccessContent() {
     domain: string;
   } | null>(null);
 
-  // Find the invoice for this paycode
-  const { data: invoiceData, isLoading: invoiceLoading } =
-    api.payCode.checkPayment.useQuery(
-      { invoiceId: payCodeId || "" },
-      {
-        enabled: !!payCodeId,
-        refetchInterval: (query) =>
-          query.state.data?.status === "SETTLED" ? false : 2000,
-      }
-    );
-
-  // Get paycode details
-  const utils = api.useUtils();
+  // Use MDK's useCheckoutSuccess to verify payment
+  const { isCheckoutPaidLoading, isCheckoutPaid, metadata } =
+    useCheckoutSuccess();
 
   // Redeem mutation
   const redeemMutation = api.payCode.redeemPayCode.useMutation({
@@ -47,12 +38,13 @@ function SuccessContent() {
     },
   });
 
-  // Auto-redeem when payment is settled
+  // Auto-redeem when MDK confirms payment
   useEffect(() => {
-    if (invoiceData?.status === "SETTLED" && payCodeId && !redeemed) {
-      redeemMutation.mutate({ invoiceId: payCodeId });
+    const resolvedPayCodeId = payCodeId || (metadata?.payCodeId as string);
+    if (isCheckoutPaid && resolvedPayCodeId && !redeemed && !redeemMutation.isPending) {
+      redeemMutation.mutate({ payCodeId: resolvedPayCodeId });
     }
-  }, [invoiceData?.status, payCodeId, redeemed]);
+  }, [isCheckoutPaid, payCodeId, metadata, redeemed, redeemMutation.isPending]);
 
   // Hide confetti after a few seconds
   useEffect(() => {
@@ -60,7 +52,18 @@ function SuccessContent() {
     return () => clearTimeout(timer);
   }, []);
 
-  if (!payCodeId) {
+  if (!payCodeId && !metadata?.payCodeId) {
+    if (isCheckoutPaidLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen p-4">
+          <h1 className="text-2xl font-bold mb-4">Verifying Payment...</h1>
+          <p className="text-gray-600">
+            Please wait while we confirm your payment.
+          </p>
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <h1 className="text-2xl font-bold mb-4">Invalid Request</h1>
@@ -72,22 +75,28 @@ function SuccessContent() {
     );
   }
 
-  if (invoiceLoading) {
+  if (isCheckoutPaidLoading || isCheckoutPaid === null) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <h1 className="text-2xl font-bold mb-4">Verifying Payment...</h1>
-        <p className="text-gray-600">Please wait while we confirm your payment.</p>
+        <p className="text-gray-600">
+          Please wait while we confirm your payment.
+        </p>
       </div>
     );
   }
 
-  if (invoiceData?.status !== "SETTLED") {
+  if (!isCheckoutPaid) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <h1 className="text-2xl font-bold mb-4">Payment Pending</h1>
+        <h1 className="text-2xl font-bold mb-4">Payment Not Confirmed</h1>
         <p className="text-gray-600 mb-4">
-          Your payment is being processed. This page will update automatically.
+          We could not confirm your payment. Please try again or contact
+          support.
         </p>
+        <Link href="/new">
+          <Button>Try Again</Button>
+        </Link>
       </div>
     );
   }
@@ -95,25 +104,34 @@ function SuccessContent() {
   if (redeemMutation.isPending) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <h1 className="text-2xl font-bold mb-4">Activating Your Pay Code...</h1>
+        <h1 className="text-2xl font-bold mb-4">
+          Activating Your Pay Code...
+        </h1>
         <p className="text-gray-600">Almost there!</p>
       </div>
     );
   }
 
   if (redeemMutation.isError) {
+    const resolvedPayCodeId = payCodeId || (metadata?.payCodeId as string);
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <h1 className="text-2xl font-bold mb-4 text-red-600">
           Something Went Wrong
         </h1>
         <p className="text-gray-600 mb-4">
-          Your payment was received, but we had trouble activating your pay code.
-          Please contact support.
+          Your payment was received, but we had trouble activating your pay
+          code. Please contact support.
         </p>
-        <Button onClick={() => redeemMutation.mutate({ invoiceId: payCodeId })}>
-          Try Again
-        </Button>
+        {resolvedPayCodeId && (
+          <Button
+            onClick={() =>
+              redeemMutation.mutate({ payCodeId: resolvedPayCodeId })
+            }
+          >
+            Try Again
+          </Button>
+        )}
       </div>
     );
   }

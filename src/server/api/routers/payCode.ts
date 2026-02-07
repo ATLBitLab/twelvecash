@@ -6,8 +6,6 @@ import {
 } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import {
-  InvoiceKind,
-  InvoiceStatus,
   PayCodeStatus,
   Prisma,
 } from "@prisma/client";
@@ -23,7 +21,6 @@ import {
   uniqueNamesGenerator,
 } from "unique-names-generator";
 import { z } from "zod";
-import { createPayCodeCheckout, verifyCheckoutPaid } from "@/server/mdk";
 
 const domainMap = JSON.parse(process.env.DOMAINS!);
 
@@ -277,10 +274,7 @@ export const payCodeRouter = createTRPCRouter({
         });
       }
 
-      // Price: 5000 sats for a pay code
-      const priceSats = 5000;
-
-      // Create the paycode first (in PENDING state) to get the ID
+      // Create the paycode in PENDING state
       const data: Prisma.PayCodeCreateInput = {
         userName: input.userName,
         domain: input.domain,
@@ -311,52 +305,13 @@ export const payCodeRouter = createTRPCRouter({
           });
         });
 
-      // Create Money Dev Kit checkout
-      let checkout;
-      try {
-        checkout = await createPayCodeCheckout(
-          priceSats,
-          payCode.id,
-          `Purchase pay code: ${input.userName}@${input.domain}`
-        );
-      } catch (e: any) {
-        // Clean up the pending paycode if checkout creation fails
-        await ctx.db.payCode.delete({ where: { id: payCode.id } });
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create checkout: " + e.message,
-        });
-      }
-
-      // Create invoice record with checkout info
-      // Note: We repurpose hash for checkoutId and bolt11 for checkoutUrl
-      const invoice = await ctx.db.invoice
-        .create({
-          data: {
-            maxAgeSeconds: 600,
-            description: "purchase",
-            status: InvoiceStatus.OPEN,
-            bolt11: checkout.checkoutUrl,
-            kind: InvoiceKind.PURCHASE,
-            hash: checkout.checkoutId,
-            mSatsTarget: priceSats * 1000, // Convert to millisats
-            payCode: {
-              connect: { id: payCode.id },
-            },
-          },
-        })
-        .catch((e: any) => {
-          console.error(e);
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to create invoice record",
-          });
-        });
-
+      // Checkout is created client-side via the MDK useCheckout hook.
+      // The client will redirect the user to the MDK checkout page,
+      // and on success, the user lands on /new/success?payCodeId=...
       return {
-        invoice: invoice,
         payCodeId: payCode.id,
-        checkoutUrl: checkout.checkoutUrl,
+        userName: payCode.userName,
+        domain: payCode.domain,
       };
     }),
 
@@ -388,103 +343,60 @@ export const payCodeRouter = createTRPCRouter({
         });
       }
 
-      // Final states, no need for checkout lookup
-      if (
-        invoice.status === InvoiceStatus.SETTLED ||
-        invoice.status === InvoiceStatus.CANCELED
-      ) {
-        return { status: invoice.status };
-      }
-
-      // Check MDK checkout status
-      // The hash field stores the checkoutId
-      let isPaid = false;
-      try {
-        isPaid = await verifyCheckoutPaid(invoice.hash);
-      } catch (e: any) {
-        console.error("Failed to verify checkout:", e);
-        // Don't throw, just return current status
-        return { status: invoice.status };
-      }
-
-      if (isPaid) {
-        const updateInvoice = await ctx.db.invoice.update({
-          where: {
-            id: input.invoiceId,
-          },
-          data: {
-            status: InvoiceStatus.SETTLED,
-            confirmedAt: new Date(),
-          },
-        });
-        return { status: updateInvoice.status };
-      }
-
       return { status: invoice.status };
     }),
 
   redeemPayCode: publicProcedure
     .input(
       z.object({
-        invoiceId: z.string(),
+        payCodeId: z.string(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      // first make sure the invoice hasn't already been redeemed
-      const invoice = await ctx.db.invoice
+      // Look up the pay code and make sure it's in PENDING state
+      const pendingPayCode = await ctx.db.payCode
         .findFirst({
           where: {
-            AND: [{ id: input.invoiceId }, { redeemed: false }],
+            AND: [
+              { id: input.payCodeId },
+              { status: PayCodeStatus.PENDING },
+            ],
           },
+          include: { params: true },
         })
         .catch((e: any) => {
           console.error("e", e);
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to lookup invoice",
+            message: "Failed to lookup pay code",
           });
         });
 
-      if (!invoice) {
+      if (!pendingPayCode) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Invoice does not exist or is already redeemed",
+          message: "Pay code does not exist or is already redeemed",
         });
       }
 
-      // Verify payment with MDK before redeeming
-      const isPaid = await verifyCheckoutPaid(invoice.hash);
-      if (!isPaid) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Payment has not been confirmed",
-        });
-      }
+      // Payment verification is handled by the MDK SDK on the client side
+      // via useCheckoutSuccess(). The user can only reach the success page
+      // after MDK confirms the payment.
 
       // TODO: If the CF post fails, paycode should still be taken by user since they purchased it.
       // TODO: If the transaction takes long (like 5s or something) it will time out and fail...
       // can happen if ex. CF api is slow. Better way?
       const payCode = await ctx.db
         .$transaction(async (transactionPrisma) => {
-          const updateInvoice = await transactionPrisma.invoice.update({
-            where: {
-              id: input.invoiceId,
-            },
-            data: {
-              redeemed: true,
-              status: InvoiceStatus.SETTLED,
-              confirmedAt: new Date(),
-            },
-          });
           const updatePayCode = await transactionPrisma.payCode.update({
             where: {
-              id: updateInvoice.payCodeId,
+              id: input.payCodeId,
             },
             data: {
               status: PayCodeStatus.ACTIVE,
             },
             include: {
-              params: true, // don't need
+              params: true,
             },
           });
           // Double check that there isn't already a record there...
