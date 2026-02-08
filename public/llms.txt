@@ -1,0 +1,160 @@
+# Twelve Cash - llms.txt
+
+> Twelve Cash encodes Bitcoin payment instructions into DNS records following BIP-353.
+> Users get human-readable addresses like `name@twelve.cash` that resolve to BOLT12 offers.
+
+## Quick Start for AI Agents
+
+### Create a Payment Address (Random Name)
+
+POST to the tRPC endpoint to create a paycode with a randomly generated username:
+
+```bash
+curl -X POST https://twelve.cash/api/trpc/payCode.createRandomPayCode \
+  -H "Content-Type: application/json" \
+  -d '{
+    "json": {
+      "domain": "twelve.cash",
+      "lno": "lno1qgsqvgjwze..."
+    }
+  }'
+```
+
+Response:
+```json
+{
+  "result": {
+    "data": {
+      "json": {
+        "id": "...",
+        "userName": "swift.penguin",
+        "domain": "twelve.cash",
+        "status": "ACTIVE"
+      }
+    }
+  }
+}
+```
+
+### Lookup a Payment Address
+
+Use DNS TXT record lookup to resolve a Twelve Cash address:
+
+```bash
+dig txt stephen.user._bitcoin-payment.twelve.cash +short
+```
+
+Returns: `"bitcoin:?lno=lno1pgg8getnw3q8gam9d3mx2tnrv9eks93pqw7dv89vg89dtreg63cwn4mtg7js438yk3alw3a43zshdgsm0p08q"`
+
+### Programmatic DNS Lookup (Python)
+
+```python
+import dns.resolver
+
+def resolve_twelve_cash(username: str, domain: str = "twelve.cash") -> str:
+    """Resolve a Twelve Cash address to its BIP-21 payment URI."""
+    dns_name = f"{username}.user._bitcoin-payment.{domain}"
+    answers = dns.resolver.resolve(dns_name, "TXT")
+    for rdata in answers:
+        return str(rdata).strip('"')
+    raise ValueError(f"No record found for {username}@{domain}")
+
+# Example
+bip21_uri = resolve_twelve_cash("stephen")
+# Returns: "bitcoin:?lno=lno1..."
+```
+
+## API Reference
+
+### Domains
+
+Available domains:
+- `twelve.cash` (production)
+- `12cash.dev` (development/testing)
+
+### Payment Parameters
+
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `lno` | BOLT12 offer (starts with "lno") | `lno1qgsqvgjwze...` |
+| `sp` | Silent payment address (starts with "sp") | `sp1qq...` |
+| `onChain` | On-chain Bitcoin address | `bc1q...` |
+| `lnurl` | LNURL pay endpoint | `lnurl1dp68gurn...` |
+| `label` | Human-readable label | `"Donations"` |
+| `custom` | Array of custom key-value pairs | `[{"prefix": "msg", "value": "Thanks!"}]` |
+
+At least one payment option (`lno`, `sp`, `onChain`, `lnurl`, or `custom`) is required.
+
+### Create Random Paycode
+
+**Endpoint:** `POST /api/trpc/payCode.createRandomPayCode`
+
+**Request Body:**
+```json
+{
+  "json": {
+    "domain": "twelve.cash",
+    "lno": "lno1...",
+    "sp": "sp1...",
+    "onChain": "bc1...",
+    "label": "My Label",
+    "custom": [{"prefix": "key", "value": "val"}]
+  }
+}
+```
+
+**Response:** Returns created paycode with auto-generated username like `adjective.animal`.
+
+### Create Custom Paycode (Requires Payment)
+
+Custom usernames require payment. Use the web UI at https://twelve.cash/new or integrate with the MDK payment flow.
+
+## BIP-353 DNS Format
+
+Twelve Cash addresses follow the BIP-353 specification:
+
+```
+{username}.user._bitcoin-payment.{domain}
+```
+
+The TXT record contains a BIP-21 URI with payment instructions:
+
+```
+bitcoin:?lno={bolt12_offer}&sp={silent_payment}&b={onchain_address}
+```
+
+## DNSSEC Validation
+
+For secure payments, validate the DNS response using DNSSEC. The [dnssec-prover](https://github.com/TheBlueMatt/dnssec-prover) tool from TheBlueMatt is recommended.
+
+## Example Use Cases
+
+### 1. Accept Lightning Payments
+Create an address with your BOLT12 offer:
+```json
+{"domain": "twelve.cash", "lno": "lno1qgsqvgjwze..."}
+```
+Share: `your-name@twelve.cash`
+
+### 2. Multi-Method Payments
+Accept both Lightning and on-chain:
+```json
+{
+  "domain": "twelve.cash",
+  "lno": "lno1...",
+  "onChain": "bc1p..."
+}
+```
+
+### 3. Silent Payments
+Use BIP-352 silent payments for privacy:
+```json
+{"domain": "twelve.cash", "sp": "sp1qq..."}
+```
+
+## Links
+
+- Website: https://twelve.cash
+- GitHub: https://github.com/ATLBitLab/twelvecash
+- BIP-353: https://github.com/bitcoin/bips/blob/master/bip-0353.mediawiki
+- BOLT12: https://bolt12.org
