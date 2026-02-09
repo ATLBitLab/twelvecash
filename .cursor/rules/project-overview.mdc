@@ -1,0 +1,34 @@
+---
+description: Twelve Cash project overview and tech stack
+globs: ["**/*"]
+---
+
+# Twelve Cash Project
+
+**Twelve Cash** is a BIP-353 implementation that encodes Bitcoin payment instructions (BOLT12 offers, on-chain addresses, LNURLs) into DNS TXT records.
+
+## Tech Stack
+
+- **Framework:** Next.js 15 (App Router)
+- **Language:** TypeScript
+- **Package Manager:** pnpm (v9.15.2+) - **always use pnpm, not npm or yarn**
+- **Database:** PostgreSQL via Prisma ORM
+- **API:** tRPC
+- **Styling:** Tailwind CSS
+- **DNS Provider:** Cloudflare API
+
+## Quick Start
+
+```bash
+pnpm install
+./start-database.sh
+pnpm postinstall && pnpm db:push
+pnpm dev
+```
+
+## Key Directories
+
+- `src/app/` - Next.js App Router pages and API routes
+- `src/components/` - React components
+- `src/server/` - tRPC routers
+- `prisma/` - Database schema
