@@ -1,0 +1,45 @@
+---
+description: Development guidelines and common commands
+globs: ["**/*"]
+---
+
+# Development Guidelines
+
+## Package Manager
+
+**Always use pnpm** - this project uses pnpm v9.15.2+.
+
+```bash
+# ✅ Correct
+pnpm install
+pnpm add <package>
+pnpm dev
+
+# ❌ Wrong
+npm install
+yarn add <package>
+```
+
+## Database Commands
+
+```bash
+pnpm db:push      # Push schema changes (development)
+pnpm db:migrate   # Run migrations (production)
+pnpm db:studio    # Open Prisma Studio GUI
+pnpm db:reset     # Reset database (destructive!)
+```
+
+## Testing
+
+```bash
+pnpm test         # Run Jest tests
+pnpm lint         # Run ESLint
+```
+
+## Environment Setup
+
+Copy `.env.sample` to `.env` and configure:
+- `DATABASE_URL` - PostgreSQL connection
+- `CLOUDFLARE_API_TOKEN` - DNS API token
+- `CLOUDFLARE_ZONE_ID` - Domain zone ID
+- `JWT_SECRET` - Token signing secret

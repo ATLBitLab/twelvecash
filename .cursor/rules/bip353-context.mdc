@@ -1,0 +1,37 @@
+---
+description: BIP-353 and payment address context
+globs: ["src/**/*"]
+---
+
+# BIP-353 Payment Addresses
+
+## Format
+
+Payment addresses follow: `username@domain.com`
+
+These resolve via DNS TXT records at: `username.user._bitcoin-payment.domain.com`
+
+## DNS Record Format
+
+TXT records contain Bitcoin URIs with payment instructions:
+
+```
+bitcoin:?lno=<bolt12_offer>&sp=<silent_payment>&b=<onchain_address>
+```
+
+## Supported Payment Types
+
+- `lno` - BOLT12 offers (Lightning)
+- `sp` - Silent payment addresses
+- `b` - On-chain Bitcoin addresses
+- `lnurl` - LNURL (custom field)
+- Custom prefixes for extensibility
+
+## DNSSEC
+
+All records must be DNSSEC-validated. This is handled via Cloudflare's DNSSEC implementation.
+
+## Key Files
+
+- `src/app/record/route.ts` - API endpoint for creating records
+- Uses Cloudflare DNS API for record management
