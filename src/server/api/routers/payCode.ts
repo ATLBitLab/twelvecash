@@ -14,6 +14,7 @@ import {
   createBip21FromParams,
   createPayCodeParams,
 } from "@/lib/util";
+import { logPayCodeActivity } from "@/lib/notifications";
 import axios from "axios";
 import {
   adjectives,
@@ -195,6 +196,9 @@ export const payCodeRouter = createTRPCRouter({
         return innerPaycode;
       });
       // TODO: catch and throw again?
+
+      // Log activity (non-blocking, fire-and-forget)
+      logPayCodeActivity({ type: "free", domain: input.domain });
 
       return payCode;
     }),
@@ -480,6 +484,9 @@ export const payCodeRouter = createTRPCRouter({
             message: "Failed to redeem pay code.",
           });
         });
+
+      // Log activity (non-blocking, fire-and-forget)
+      logPayCodeActivity({ type: "paid", domain: payCode.domain });
 
       return payCode;
     }),
