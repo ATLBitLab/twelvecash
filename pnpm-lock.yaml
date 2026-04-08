@@ -57,13 +57,13 @@ importers:
         specifier: ^3.1.0
         version: 3.2.0(react@19.2.4)
       react:
-        specifier: ^19
+        specifier: ^19.0.1
         version: 19.2.4
       react-confetti:
         specifier: ^6.1.0
         version: 6.4.0(react@19.2.4)
       react-dom:
-        specifier: ^19
+        specifier: ^19.0.1
         version: 19.2.4(react@19.2.4)
       react-hook-form:
         specifier: ^7.52.1
