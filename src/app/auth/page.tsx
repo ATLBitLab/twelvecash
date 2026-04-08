@@ -1,8 +1,8 @@
 import Button from "../components/Button";
 import getUserServer from "../components/getUserServer";
 
-export default function Auth() {
-  const user = getUserServer();
+export default async function Auth() {
+  const user = await getUserServer();
   if (user) {
     return (
       <div>

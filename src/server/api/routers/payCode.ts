@@ -6,8 +6,6 @@ import {
 } from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import {
-  InvoiceKind,
-  InvoiceStatus,
   PayCodeStatus,
   Prisma,
 } from "@prisma/client";
@@ -23,7 +21,6 @@ import {
   uniqueNamesGenerator,
 } from "unique-names-generator";
 import { z } from "zod";
-import { createInvoice, lookupInvoice } from "@/server/lnd";
 
 const domainMap = JSON.parse(process.env.DOMAINS!);
 
@@ -121,7 +118,7 @@ export const payCodeRouter = createTRPCRouter({
         });
       }
 
-      let create = [];
+      let create: Prisma.PayCodeParamCreateWithoutPayCodeInput[] = [];
       try {
         create = createPayCodeParams(
           input.onChain,
@@ -260,7 +257,7 @@ export const payCodeRouter = createTRPCRouter({
         });
       }
 
-      let create = [];
+      let create: Prisma.PayCodeParamCreateWithoutPayCodeInput[] = [];
       try {
         create = createPayCodeParams(
           input.onChain,
@@ -277,39 +274,13 @@ export const payCodeRouter = createTRPCRouter({
         });
       }
 
-      // TODO: calculate price
-      const priceMsats = 5000000;
-      let invoice;
-
-      try {
-        invoice = await createInvoice(priceMsats, "Purchase pay code.");
-      } catch (e: any) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create invoice",
-        });
-      }
-
-      // finally, create the paycode, but set to PENDING
+      // Create the paycode in PENDING state
       const data: Prisma.PayCodeCreateInput = {
         userName: input.userName,
         domain: input.domain,
         status: PayCodeStatus.PENDING,
         params: {
           create: create,
-        },
-        invoices: {
-          create: [
-            {
-              maxAgeSeconds: 600,
-              description: "purchase",
-              status: InvoiceStatus.OPEN,
-              bolt11: invoice.payment_request,
-              kind: InvoiceKind.PURCHASE,
-              hash: invoice.r_hash,
-              mSatsTarget: priceMsats,
-            },
-          ],
         },
       };
 
@@ -318,12 +289,12 @@ export const payCodeRouter = createTRPCRouter({
           connect: { id: ctx.user.id },
         };
       }
+
       const payCode = await ctx.db.payCode
         .create({
           data: data,
           include: {
             params: true,
-            invoices: true,
           },
         })
         .catch((e: any) => {
@@ -334,11 +305,13 @@ export const payCodeRouter = createTRPCRouter({
           });
         });
 
-      console.debug("paycode.invoices", payCode.invoices[0].id);
-
+      // Checkout is created client-side via the MDK useCheckout hook.
+      // The client will redirect the user to the MDK checkout page,
+      // and on success, the user lands on /new/success?payCodeId=...
       return {
-        invoice: payCode.invoices[0],
         payCodeId: payCode.id,
+        userName: payCode.userName,
+        domain: payCode.domain,
       };
     }),
 
@@ -369,88 +342,61 @@ export const payCodeRouter = createTRPCRouter({
           message: "Invoice does not exist",
         });
       }
-      // Final states, no need for invoice lookup
-      if (
-        invoice.status === InvoiceStatus.SETTLED ||
-        invoice.status === InvoiceStatus.CANCELED
-      ) {
-        return { status: invoice.status };
-      }
 
-      let lndInvoice;
-      try {
-        lndInvoice = await lookupInvoice(invoice.hash);
-      } catch (e: any) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Failed to fetch invoice from lnd node",
-        });
-      }
-      console.debug("lndInvoice state", lndInvoice.state);
-      if (lndInvoice.status !== invoice.status) {
-        const updateInvoice = await ctx.db.invoice.update({
-          where: {
-            id: input.invoiceId,
-          },
-          data: {
-            status: lndInvoice.state, // using same strings
-          },
-        });
-        return { status: updateInvoice.status };
-      }
       return { status: invoice.status };
     }),
 
   redeemPayCode: publicProcedure
     .input(
       z.object({
-        invoiceId: z.string(),
+        payCodeId: z.string(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      // first make sure the invoice hasn't already been redeemed
-      const invoice = await ctx.db.invoice
+      // Look up the pay code and make sure it's in PENDING state
+      const pendingPayCode = await ctx.db.payCode
         .findFirst({
           where: {
-            AND: [{ id: input.invoiceId }, { redeemed: false }],
+            AND: [
+              { id: input.payCodeId },
+              { status: PayCodeStatus.PENDING },
+            ],
           },
+          include: { params: true },
         })
         .catch((e: any) => {
           console.error("e", e);
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to lookup invoice",
+            message: "Failed to lookup pay code",
           });
         });
 
-      if (!invoice) {
+      if (!pendingPayCode) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Invoice does not exist or is already redeemed",
+          message: "Pay code does not exist or is already redeemed",
         });
       }
+
+      // Payment verification is handled by the MDK SDK on the client side
+      // via useCheckoutSuccess(). The user can only reach the success page
+      // after MDK confirms the payment.
+
       // TODO: If the CF post fails, paycode should still be taken by user since they purchased it.
       // TODO: If the transaction takes long (like 5s or something) it will time out and fail...
       // can happen if ex. CF api is slow. Better way?
       const payCode = await ctx.db
         .$transaction(async (transactionPrisma) => {
-          const updateInvoice = await transactionPrisma.invoice.update({
-            where: {
-              id: input.invoiceId,
-            },
-            data: {
-              redeemed: true,
-            },
-          });
           const updatePayCode = await transactionPrisma.payCode.update({
             where: {
-              id: updateInvoice.payCodeId,
+              id: input.payCodeId,
             },
             data: {
               status: PayCodeStatus.ACTIVE,
             },
             include: {
-              params: true, // don't need
+              params: true,
             },
           });
           // Double check that there isn't already a record there...

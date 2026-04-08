@@ -2,7 +2,7 @@ import {
   FetchCreateContextFnOptions,
   fetchRequestHandler,
 } from "@trpc/server/adapters/fetch";
-import { type NextRequest, type NextResponse } from "next/server";
+import { type NextRequest } from "next/server";
 
 import { env } from "@/env";
 import { appRouter } from "@/server/api/root";
@@ -23,7 +23,7 @@ const createContext = async (
   });
 };
 
-const handler = (req: NextRequest, res: NextResponse) =>
+const handler = (req: NextRequest) =>
   fetchRequestHandler({
     endpoint: "/api/trpc",
     req,

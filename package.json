@@ -18,6 +18,8 @@
   "dependencies": {
     "@bitcoin-design/bitcoin-icons-react": "^0.1.10",
     "@hookform/resolvers": "^3.9.0",
+    "@moneydevkit/lightning-js": "0.1.66",
+    "@moneydevkit/nextjs": "^0.9.0",
     "@prisma/client": "^5.17.0",
     "@tanstack/react-query": "^5.50.0",
     "@trpc/client": "^11.0.0-rc.446",
@@ -27,12 +29,12 @@
     "bech32": "^2.0.0",
     "cookie": "^0.6.0",
     "jsonwebtoken": "^9.0.2",
-    "next": "14.2.35",
+    "next": "^15.1.0",
     "nostr-tools": "^2.7.1",
     "qrcode.react": "^3.1.0",
-    "react": "^18.3.1",
+    "react": "^19.0.1",
     "react-confetti": "^6.1.0",
-    "react-dom": "^18.3.1",
+    "react-dom": "^19.0.1",
     "react-hook-form": "^7.52.1",
     "react-use": "^17.5.0",
     "superjson": "^2.2.1",
@@ -46,11 +48,11 @@
     "@types/jest": "^29.5.12",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
-    "eslint-config-next": "14.2.35",
+    "eslint-config-next": "^15.1.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8",
@@ -59,5 +61,5 @@
     "ts-node": "^10.9.2",
     "typescript": "^5"
   },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "packageManager": "pnpm@9.15.2+sha512.93e57b0126f0df74ce6bff29680394c0ba54ec47246b9cf321f0121d8d9bb03f750a705f24edc3c1180853afd7c2c3b94196d0a3d53d3e069d9e2793ef11f321"
 }

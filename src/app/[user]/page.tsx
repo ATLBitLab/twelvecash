@@ -6,8 +6,9 @@ import Button from "../components/Button";
 import { ArrowLeftIcon } from "@bitcoin-design/bitcoin-icons-react/filled";
 import UserDetails from "../features/UserDetails";
 
-export default function User({ params }: { params: { user: string } }) {
-  const decoded = decodeURIComponent(params.user);
+export default async function User({ params }: { params: Promise<{ user: string }> }) {
+  const { user: userParam } = await params;
+  const decoded = decodeURIComponent(userParam);
   const [user, domain] = decoded.split("@");
   return (
     <main className="mx-auto max-w-4xl flex flex-col gap-9 w-full text-center p-2 md:p-6">

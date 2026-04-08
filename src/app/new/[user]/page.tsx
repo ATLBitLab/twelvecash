@@ -1,14 +1,15 @@
 "use client";
 import Bip353Box from "@/app/components/Bip353Box"
-import React from 'react'
+import React, { use } from 'react'
 import useWindowSize from "react-use/lib/useWindowSize"
 import Confetti from 'react-confetti'
 import { useState, useEffect } from "react";
 import CopyUserLinkButton from "@/app/features/CopyUserLinkButton";
 import CopyBip353Button from "@/app/features/CopyBip353Button";
 
-export default function NewUser({ params }: { params: { user: string } }){
-    const decoded = decodeURIComponent(params.user);
+export default function NewUser({ params }: { params: Promise<{ user: string }> }){
+    const { user: userParam } = use(params);
+    const decoded = decodeURIComponent(userParam);
     const [user, domain] = decoded.split("@");
     // const { width, height } = useWindowSize()
     // console.log(width, height)

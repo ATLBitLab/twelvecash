@@ -4,8 +4,8 @@ import jwt from "jsonwebtoken";
 import { TokenUser } from "@/server/api/trpc";
 
 // Get the user on server components
-export default function getUser() {
-  const cookieHeader = headers().get("cookie") || "";
+export default async function getUser() {
+  const cookieHeader = (await headers()).get("cookie") || "";
   const cookies = cookieHeader ? parse(cookieHeader) : {};
   const accessToken = cookies["access-token"];
   const user = accessToken

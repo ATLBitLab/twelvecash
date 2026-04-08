@@ -5,17 +5,15 @@ import {
     ArrowRightIcon,
     CaretUpIcon,
     CaretDownIcon,
-    RefreshIcon,
 } from "@bitcoin-design/bitcoin-icons-react/filled";
-import InteractionModal from "@/app/components/InteractionModal";
-import Invoice from "@/app/components/Invoice";
 import type { TwelveCashDomains } from "@/lib/util/constant";
 import { useEffect, useState } from "react";
-import { RouterOutputs, api } from "@/trpc/react";
+import { api } from "@/trpc/react";
 import { useZodForm } from "@/lib/util/useZodForm";
 import { useRouter } from "next/navigation";
 import { RouterInputs } from "@/trpc/react";
 import { payCodeInput } from "@/lib/util/constant";
+import { useCheckout } from "@moneydevkit/nextjs";
 
 interface NewPayCodeFormProps {
     defaultDomain: TwelveCashDomains;
@@ -23,19 +21,46 @@ interface NewPayCodeFormProps {
 
 export default function NewPayCodeForm(props: NewPayCodeFormProps) {
     const [optionsExpanded, setOptionsExpanded] = useState(false);
-    const [paymentInfo, setPaymentInfo] = useState<
-        RouterOutputs["payCode"]["createPayCode"] | null
-    >(null);
     const [freeName, setFreeName] = useState(false);
+    const [checkoutError, setCheckoutError] = useState<string | null>(null);
+    const [isCreating, setIsCreating] = useState(false);
 
     const router = useRouter();
+    const { createCheckout, isLoading: isCheckoutLoading } = useCheckout();
+
   const createPayCode = api.payCode.createPayCode.useMutation({
-    onSuccess: (data) => {
-      console.debug("success data", data);
-      setPaymentInfo(data);
+    onSuccess: async (data) => {
+      console.debug("PayCode created, creating MDK checkout...", data);
+      setCheckoutError(null);
+
+      // Create an MDK checkout for the pay code purchase
+      const result = await createCheckout({
+        type: "AMOUNT",
+        amount: 5000,
+        currency: "SAT",
+        title: "Purchase Pay Code",
+        description: `Purchase pay code: ${data.userName}@${data.domain}`,
+        successUrl: `/new/success?payCodeId=${data.payCodeId}`,
+        metadata: {
+          payCodeId: data.payCodeId,
+          userName: data.userName,
+          domain: data.domain,
+        },
+      });
+
+      if (result.error) {
+        console.error("MDK checkout failed:", result.error);
+        setCheckoutError(result.error.message);
+        setIsCreating(false);
+        return;
+      }
+
+      // Redirect to MDK checkout page
+      window.location.href = result.data.checkoutUrl;
     },
     onError: (err) => {
       console.error("Failed to create paycode", err);
+      setIsCreating(false);
     },
   });
   const createRandomPaycode = api.payCode.createRandomPayCode.useMutation({
@@ -45,18 +70,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
     },
     onError: () => {
       console.error("Failed to create paycode");
-    },
-  });
-  const redeemPayCode = api.payCode.redeemPayCode.useMutation({
-    onSuccess: (payCode) => {
-      // setPaymentInfo null?
-      setPaymentInfo(null);
-      console.debug("redeem success!", payCode);
-      router.push(`/new/${payCode.userName}@${payCode.domain}`);
-    },
-    onError: (err) => {
-      setPaymentInfo(null);
-      console.error("Failed to redeem paycode... sorry", err);
+      setIsCreating(false);
     },
   });
 
@@ -98,12 +112,16 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
       });
       return;
     }
+    setIsCreating(true);
+    setCheckoutError(null);
     if (freeName) {
       createRandomPaycode.mutate(data);
       return;
     }
     createPayCode.mutate(data);
   };
+
+  const isBusy = isCreating || createPayCode.isPending || isCheckoutLoading;
 
     return (
         <div className="flex flex-col gap-9">
@@ -193,6 +211,11 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
             hidden={!optionsExpanded}
             register={register}
             />
+            {checkoutError && (
+                <p className="text-red-500 text-sm">
+                    Failed to create checkout: {checkoutError}
+                </p>
+            )}
             <div className="flex flex-col md:flex-row gap-4 justify-between">
             <Button
                 format="secondary"
@@ -209,33 +232,18 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
                 )}
             </Button>
             <Button
-                disabled={!isDirty || !isValid}
+                disabled={!isDirty || !isValid || isBusy}
                 onClick={handleSubmit(createPaycode)}
             >
-                Create Pay Code <ArrowRightIcon className="w-6 h-6" />{" "}
+                {isBusy ? (
+                    "Creating..."
+                ) : (
+                    <>
+                        Create Pay Code <ArrowRightIcon className="w-6 h-6" />
+                    </>
+                )}
             </Button>
             </div>
-            {paymentInfo && (
-            <InteractionModal
-                title="Pay for User Name"
-                close={() => setPaymentInfo(null)}
-            >
-                <div className="flex flex-row justify-between items-center mb-4">
-                <p className="text-center text-2xl mb-0 font-semibold">
-                    5,000 sats
-                </p>
-                <div className="flex flex-row gap-1 items-center justify-end font-bold">
-                    Awaiting Payment <RefreshIcon className="w-6 h-6 animate-spin" />
-                </div>
-                </div>
-                <Invoice
-                paymentInfo={paymentInfo}
-                onSuccess={() =>
-                    redeemPayCode.mutate({ invoiceId: paymentInfo.invoice.id })
-                }
-                />
-            </InteractionModal>
-            )}
         </div>
     )
 }
