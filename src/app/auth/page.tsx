@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Button from "../components/Button";
 import getUserServer from "../components/getUserServer";
 
@@ -21,7 +22,7 @@ export default async function Auth() {
       </div>
       
       <p className="text-sm text-gray-500 text-center mt-4">
-        New here? <a href="/auth/signup" className="text-blue-500 hover:underline">Create an account</a>
+        New here? <Link href="/auth/signup" className="text-blue-500 hover:underline">Create an account</Link>
       </p>
     </div>
   );

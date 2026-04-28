@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "@/lib/auth-client";
@@ -82,15 +83,15 @@ export default function EmailLogin() {
 
       <p className="text-sm text-gray-500 text-center">
         Don&apos;t have an account?{" "}
-        <a href="/auth/signup" className="text-blue-500 hover:underline">
+        <Link href="/auth/signup" className="text-blue-500 hover:underline">
           Sign up
-        </a>
+        </Link>
       </p>
 
       <p className="text-sm text-gray-500 text-center">
-        <a href="/auth" className="text-blue-500 hover:underline">
+        <Link href="/auth" className="text-blue-500 hover:underline">
           ← Back to all sign in options
-        </a>
+        </Link>
       </p>
     </div>
   );
