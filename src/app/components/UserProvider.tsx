@@ -1,7 +1,5 @@
-import jwt from "jsonwebtoken";
-import { TokenUser } from "@/server/api/trpc";
 import { headers } from "next/headers";
-import { parse } from "cookie";
+import { getCurrentUser } from "@/lib/current-user";
 import ClientUserProvider from "./ClientUserProvider";
 
 export default async function UserProvider({
@@ -9,12 +7,7 @@ export default async function UserProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const cookieHeader = (await headers()).get("cookie") || "";
-  const cookies = cookieHeader ? parse(cookieHeader) : {};
-  const accessToken = cookies["access-token"];
-  const user = accessToken
-    ? (jwt.verify(accessToken, process.env.JWT_SECRET ?? "") as TokenUser)
-    : undefined;
+  const user = await getCurrentUser(await headers());
 
   return <ClientUserProvider initialUser={user}>{children}</ClientUserProvider>;
 }

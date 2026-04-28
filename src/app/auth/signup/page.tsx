@@ -44,7 +44,8 @@ export default function SignUp() {
         return;
       }
 
-      router.push("/dashboard");
+      router.push("/account");
+      router.refresh();
     } catch (err) {
       setError("An unexpected error occurred");
       setLoading(false);

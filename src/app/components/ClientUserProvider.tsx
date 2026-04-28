@@ -1,11 +1,11 @@
 "use client";
 
-import { TokenUser } from "@/server/api/trpc";
+import type { AppUser } from "@/lib/current-user";
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 interface UserContextType {
-  user?: TokenUser;
-  setUser: React.Dispatch<React.SetStateAction<TokenUser | undefined>>;
+  user?: AppUser;
+  setUser: React.Dispatch<React.SetStateAction<AppUser | undefined>>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -15,9 +15,9 @@ export default function ClientUserProvider({
   initialUser,
 }: {
   children: React.ReactNode;
-  initialUser: TokenUser | undefined;
+  initialUser: AppUser | undefined;
 }) {
-  const [user, setUser] = useState<TokenUser | undefined>(initialUser);
+  const [user, setUser] = useState<AppUser | undefined>(initialUser);
 
   useEffect(() => {
     if (initialUser) {

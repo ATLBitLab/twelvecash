@@ -30,7 +30,8 @@ export default function EmailLogin() {
         return;
       }
 
-      router.push("/dashboard");
+      router.push("/account");
+      router.refresh();
     } catch (err) {
       setError("An unexpected error occurred");
       setLoading(false);
