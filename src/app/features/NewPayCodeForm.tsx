@@ -6,17 +6,17 @@ import {
     CaretUpIcon,
     CaretDownIcon,
 } from "@bitcoin-design/bitcoin-icons-react/filled";
-import type { TwelveCashDomains } from "@/lib/util/constant";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/trpc/react";
 import { useZodForm } from "@/lib/util/useZodForm";
 import { useRouter } from "next/navigation";
 import { RouterInputs } from "@/trpc/react";
-import { payCodeInput } from "@/lib/util/constant";
+import { createPayCodeInput } from "@/lib/util/constant";
 import { useCheckout } from "@moneydevkit/nextjs";
 
 interface NewPayCodeFormProps {
-    defaultDomain: TwelveCashDomains;
+    defaultDomain: string;
+    domains: string[];
 }
 
 export default function NewPayCodeForm(props: NewPayCodeFormProps) {
@@ -27,6 +27,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
 
     const router = useRouter();
     const { createCheckout, isLoading: isCheckoutLoading } = useCheckout();
+    const payCodeInput = useMemo(() => createPayCodeInput(props.domains), [props.domains]);
 
   const createPayCode = api.payCode.createPayCode.useMutation({
     onSuccess: async (data) => {
@@ -85,6 +86,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
     setValue,
     setError,
     trigger,
+    watch,
     formState: { errors, isDirty, isValid, dirtyFields },
   } = useZodForm({
     mode: "onChange",
@@ -127,6 +129,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
   };
 
   const isBusy = isCreating || createPayCode.isPending || isCheckoutLoading;
+  const selectedDomain = watch("domain") || props.defaultDomain;
 
     return (
         <div className="flex flex-col gap-9">
@@ -149,6 +152,21 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
                 Give Me a Random Name (Free)
                 </Button>
             </div>
+            <div className="flex flex-col gap-2">
+              <label className="font-semibold text-lg">Domain</label>
+              <div className="p-6 rounded-xl bg-white/50 flex flex-row justify-between gap-2 border-gray-200 border shadow-inner text-xl">
+                <select className="w-full bg-white/0 focus:outline-none" {...register("domain")}>
+                  {props.domains.map((domain) => (
+                    <option key={domain} value={domain}>
+                      @{domain}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className={errors.domain ? "text-red-500 font-medium" : ""}>
+                {errors.domain?.message || "Choose the domain you want for this pay code."}
+              </p>
+            </div>
             {!freeName && (
                 <Input
                 name="userName"
@@ -159,7 +177,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
                 error={!!errors.userName && !!dirtyFields.userName}
                 placeholder="satoshi"
                 register={register}
-                append={`@${props.defaultDomain}`}
+                append={`@${selectedDomain}`}
                 />
             )}
             </div>
