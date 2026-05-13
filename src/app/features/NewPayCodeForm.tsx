@@ -130,6 +130,9 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
 
   const isBusy = isCreating || createPayCode.isPending || isCheckoutLoading;
   const selectedDomain = watch("domain") || props.defaultDomain;
+  const getMessage = (message: unknown) =>
+    typeof message === "string" ? message : undefined;
+  const domainErrorMessage = getMessage(errors.domain?.message);
 
     return (
         <div className="flex flex-col gap-9">
@@ -164,7 +167,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
                 </select>
               </div>
               <p className={errors.domain ? "text-red-500 font-medium" : ""}>
-                {errors.domain?.message || "Choose the domain you want for this pay code."}
+                {domainErrorMessage || "Choose the domain you want for this pay code."}
               </p>
             </div>
             {!freeName && (
@@ -172,7 +175,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
                 name="userName"
                 label="Choose a User Name"
                 description={
-                    errors.userName && dirtyFields.userName ? errors.userName.message : "Pick your user name!"
+                    errors.userName && dirtyFields.userName ? getMessage(errors.userName.message) : "Pick your user name!"
                 }
                 error={!!errors.userName && !!dirtyFields.userName}
                 placeholder="satoshi"
@@ -185,7 +188,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
             name="lno"
             label="BOLT 12 Offer"
             description={
-                errors.lno ? errors.lno.message : "Learn more at BOLT12.org"
+                errors.lno ? getMessage(errors.lno.message) : "Learn more at BOLT12.org"
             }
             error={!!errors.lno}
             placeholder="lno123...xyz"
@@ -195,7 +198,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
             name="sp"
             label="Silent Payments address"
             description={
-                errors.sp ? errors.sp.message : "Learn more at silentpayments.xyz"
+                errors.sp ? getMessage(errors.sp.message) : "Learn more at silentpayments.xyz"
             }
             error={!!errors.sp}
             placeholder="sp123...xyz"
@@ -206,7 +209,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
             label="Onchain Address"
             description={
                 errors.onChain
-                ? errors.onChain.message
+                ? getMessage(errors.onChain.message)
                 : "Address re-use is discouraged for privacy. Consider using a silent payment address instead."
             }
             error={!!errors.onChain}
@@ -219,7 +222,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
             label="Label"
             description={
                 errors.label
-                ? errors.label.message
+                ? getMessage(errors.label.message)
                 : "Not all wallets support this. It allows a payee to categorize an address with a name."
             }
             error={!!errors.label}
@@ -232,7 +235,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
             label="LNURL Pay"
             description={
                 errors.lnurl
-                ? errors.lnurl.message
+                ? getMessage(errors.lnurl.message)
                 : "You can add in LNURL information for services that do not support these other methods."
             }
             error={!!errors.lnurl}
