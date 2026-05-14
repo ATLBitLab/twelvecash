@@ -1,23 +1,23 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useUser } from "./ClientUserProvider"; // Adjust the import path as necessary
+import { useUser } from "./ClientUserProvider";
 import Button from "./Button";
 import { api } from "@/trpc/react";
+import { signOut } from "@/lib/auth-client";
 
 export default function LogoutButton() {
   const router = useRouter();
   const { setUser } = useUser();
-  const logout = api.user.logout.useMutation({
-    onSuccess: () => {
-      console.debug("logged out");
-      setUser(undefined);
-      router.push(`/`);
-    },
-    onError: () => {
-      console.error("Failed to log in");
-    },
-  });
+  const logout = api.user.logout.useMutation();
 
-  return <Button format="secondary" onClick={() => logout.mutate()}>Logout</Button>;
+  const handleLogout = async () => {
+    await signOut().catch(() => undefined);
+    await logout.mutateAsync().catch(() => undefined);
+    setUser(undefined);
+    router.push(`/`);
+    router.refresh();
+  };
+
+  return <Button format="secondary" onClick={handleLogout}>Logout</Button>;
 }
