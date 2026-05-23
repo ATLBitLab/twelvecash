@@ -142,7 +142,9 @@ For this, we rely on the [dnssec-prover tool](https://github.com/TheBlueMatt/dns
 
 ## Development
 
-You can use this tool with Cloudflare DNS API.
+This service currently supports the Cloudflare DNS API.
+
+> **DigitalOcean support is deprecated** because DigitalOcean DNS does not support DNSSEC, which means it cannot be used for BIP-353 / bit353 validation.
 
 ### Cloudflare
 
