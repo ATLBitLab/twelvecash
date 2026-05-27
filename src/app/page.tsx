@@ -6,9 +6,10 @@ import {
   SearchIcon,
 } from "@bitcoin-design/bitcoin-icons-react/filled";
 import { HydrateClient } from "@/trpc/server";
+import { env } from "@/env";
 
 export default function Home() {
-  const defaultDomain = process.env.DOMAIN ? process.env.DOMAIN : "twelve.cash";
+  const defaultDomain = Object.keys(env.DOMAINS)[0] ?? "twelve.cash";
   const users = [
     { user: "sensible.pangolin", domain: defaultDomain },
     { user: "magnificent.deinonychus", domain: defaultDomain },

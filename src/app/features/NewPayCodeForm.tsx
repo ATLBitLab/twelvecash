@@ -6,17 +6,17 @@ import {
     CaretUpIcon,
     CaretDownIcon,
 } from "@bitcoin-design/bitcoin-icons-react/filled";
-import type { TwelveCashDomains } from "@/lib/util/constant";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/trpc/react";
 import { useZodForm } from "@/lib/util/useZodForm";
 import { useRouter } from "next/navigation";
 import { RouterInputs } from "@/trpc/react";
-import { payCodeInput } from "@/lib/util/constant";
+import { createPayCodeInput } from "@/lib/util/constant";
 import { useCheckout } from "@moneydevkit/nextjs";
 
 interface NewPayCodeFormProps {
-    defaultDomain: TwelveCashDomains;
+    defaultDomain: string;
+    domains: string[];
 }
 
 export default function NewPayCodeForm(props: NewPayCodeFormProps) {
@@ -27,6 +27,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
 
     const router = useRouter();
     const { createCheckout, isLoading: isCheckoutLoading } = useCheckout();
+    const payCodeInput = useMemo(() => createPayCodeInput(props.domains), [props.domains]);
 
   const createPayCode = api.payCode.createPayCode.useMutation({
     onSuccess: async (data) => {
@@ -85,6 +86,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
     setValue,
     setError,
     trigger,
+    watch,
     formState: { errors, isDirty, isValid, dirtyFields },
   } = useZodForm({
     mode: "onChange",
@@ -127,6 +129,10 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
   };
 
   const isBusy = isCreating || createPayCode.isPending || isCheckoutLoading;
+  const selectedDomain = watch("domain") || props.defaultDomain;
+  const getMessage = (message: unknown) =>
+    typeof message === "string" ? message : undefined;
+  const domainErrorMessage = getMessage(errors.domain?.message);
 
     return (
         <div className="flex flex-col gap-9">
@@ -149,17 +155,32 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
                 Give Me a Random Name (Free)
                 </Button>
             </div>
+            <div className="flex flex-col gap-2">
+              <label className="font-semibold text-lg">Domain</label>
+              <div className="p-6 rounded-xl bg-white/50 flex flex-row justify-between gap-2 border-gray-200 border shadow-inner text-xl">
+                <select className="w-full bg-white/0 focus:outline-none" {...register("domain")}>
+                  {props.domains.map((domain) => (
+                    <option key={domain} value={domain}>
+                      @{domain}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className={errors.domain ? "text-red-500 font-medium" : ""}>
+                {domainErrorMessage || "Choose the domain you want for this pay code."}
+              </p>
+            </div>
             {!freeName && (
                 <Input
                 name="userName"
                 label="Choose a User Name"
                 description={
-                    errors.userName && dirtyFields.userName ? errors.userName.message : "Pick your user name!"
+                    errors.userName && dirtyFields.userName ? getMessage(errors.userName.message) : "Pick your user name!"
                 }
                 error={!!errors.userName && !!dirtyFields.userName}
                 placeholder="satoshi"
                 register={register}
-                append={`@${props.defaultDomain}`}
+                append={`@${selectedDomain}`}
                 />
             )}
             </div>
@@ -167,7 +188,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
             name="lno"
             label="BOLT 12 Offer"
             description={
-                errors.lno ? errors.lno.message : "Learn more at BOLT12.org"
+                errors.lno ? getMessage(errors.lno.message) : "Learn more at BOLT12.org"
             }
             error={!!errors.lno}
             placeholder="lno123...xyz"
@@ -177,7 +198,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
             name="sp"
             label="Silent Payments address"
             description={
-                errors.sp ? errors.sp.message : "Learn more at silentpayments.xyz"
+                errors.sp ? getMessage(errors.sp.message) : "Learn more at silentpayments.xyz"
             }
             error={!!errors.sp}
             placeholder="sp123...xyz"
@@ -188,7 +209,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
             label="Onchain Address"
             description={
                 errors.onChain
-                ? errors.onChain.message
+                ? getMessage(errors.onChain.message)
                 : "Address re-use is discouraged for privacy. Consider using a silent payment address instead."
             }
             error={!!errors.onChain}
@@ -201,7 +222,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
             label="Label"
             description={
                 errors.label
-                ? errors.label.message
+                ? getMessage(errors.label.message)
                 : "Not all wallets support this. It allows a payee to categorize an address with a name."
             }
             error={!!errors.label}
@@ -214,7 +235,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
             label="LNURL Pay"
             description={
                 errors.lnurl
-                ? errors.lnurl.message
+                ? getMessage(errors.lnurl.message)
                 : "You can add in LNURL information for services that do not support these other methods."
             }
             error={!!errors.lnurl}

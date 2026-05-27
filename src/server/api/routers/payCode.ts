@@ -1,4 +1,4 @@
-import { payCodeInput, randomPayCodeInput } from "@/lib/util/constant";
+import { createPayCodeInput, createRandomPayCodeInput } from "@/lib/util/constant";
 import {
   createTRPCRouter,
   protectedProcedure,
@@ -24,10 +24,11 @@ import {
 import { z } from "zod";
 
 const domainMap = JSON.parse(process.env.DOMAINS!);
+const supportedDomains = Object.keys(domainMap);
 
 export const payCodeRouter = createTRPCRouter({
   createRandomPayCode: publicProcedure
-    .input(randomPayCodeInput)
+    .input(createRandomPayCodeInput(supportedDomains))
     .mutation(async ({ ctx, input }) => {
       const user = ctx.user;
       console.debug("user", user);
@@ -204,7 +205,7 @@ export const payCodeRouter = createTRPCRouter({
     }),
 
   createPayCode: publicProcedure
-    .input(payCodeInput)
+    .input(createPayCodeInput(supportedDomains))
     .mutation(async ({ ctx, input }) => {
       const fullName = process.env.NETWORK
         ? `${input.userName}.user._bitcoin-payment.${process.env.NETWORK}.${input.domain}`
