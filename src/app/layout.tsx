@@ -9,26 +9,29 @@ import Header from "./components/Header";
 
 const urbanist = Urbanist({ subsets: ["latin"] });
 
-const title = "TwelveCash | Simple Bitcoin Usernames"
-const description = "Get your own TwelveCash address. Supports BOLT 12 offers, Silent payments, and more!"
-const poster = "https://twelve.cash/twelve-cash-poster.png"
+const title = "TwelveCash | Simple Bitcoin Usernames";
+const description =
+  "Get your own TwelveCash address. Supports BOLT 12 offers, Silent payments, and more!";
+const poster = "/twelve-cash-poster.png";
 
 export const metadata: Metadata = {
-  title: title,
-  description: description,
-  icons: [{ url: '/favicon.ico', rel: 'icon' }],
+  metadataBase: new URL(process.env.NEXT_PUBLIC_URL || "https://twelve.cash"),
+  title,
+  description,
+  icons: [{ url: "/favicon.ico", rel: "icon" }],
   openGraph: {
-      title: title,
-      description: description,
-      images: [{ url: poster }],
+    title,
+    description,
+    images: [{ url: poster }],
   },
   twitter: {
-      site: "TwelveCash",
-      description: description,
-      title: title,
-      images: poster
-  }
-}
+    card: "summary_large_image",
+    site: "@twelvecash",
+    title,
+    description,
+    images: [poster],
+  },
+};
 
 export default function RootLayout({
   children,
