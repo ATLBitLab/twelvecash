@@ -1,0 +1,29 @@
+# Dependabot version + security updates.
+#
+# The "npm" package-ecosystem covers npm, yarn, and pnpm lockfiles —
+# there is no separate ecosystem value for the latter two.
+#
+# Major-version bumps are deliberately left out of the group below so each
+# breaking change arrives as its own reviewable PR.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    groups:
+      npm-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
