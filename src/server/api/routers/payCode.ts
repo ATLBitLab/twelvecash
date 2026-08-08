@@ -1,9 +1,14 @@
-import { createPayCodeInput, createRandomPayCodeInput } from "@/lib/util/constant";
+import {
+  createPayCodeInput,
+  createRandomPayCodeInput,
+  PAY_CODE_PRICE_SATS,
+} from "@/lib/util/constant";
 import {
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
 } from "@/server/api/trpc";
+import { createMdkCheckout, getMdkCheckout, isCheckoutPaid } from "@/server/mdk";
 import { TRPCError } from "@trpc/server";
 import {
   PayCodeStatus,
@@ -310,45 +315,65 @@ export const payCodeRouter = createTRPCRouter({
           });
         });
 
-      // Checkout is created client-side via the MDK useCheckout hook.
-      // The client will redirect the user to the MDK checkout page,
-      // and on success, the user lands on /new/success?payCodeId=...
+      // Create the MDK checkout server-side so the price and the
+      // paycode<->checkout binding cannot be tampered with by the client.
+      let checkoutId: string;
+      try {
+        const checkout = await createMdkCheckout({
+          type: "AMOUNT",
+          amount: PAY_CODE_PRICE_SATS,
+          currency: "SAT",
+          title: "Purchase Pay Code",
+          description: `Purchase pay code: ${payCode.userName}@${payCode.domain}`,
+          successUrl: `/new/success?payCodeId=${payCode.id}`,
+          metadata: {
+            payCodeId: payCode.id,
+            userName: payCode.userName,
+            domain: payCode.domain,
+          },
+        });
+        checkoutId = checkout.id;
+      } catch (e: any) {
+        console.error("Failed to create MDK checkout", e);
+        // Best-effort cleanup of the just-created PENDING row (params first —
+        // the relation has no onDelete: Cascade). A leftover PENDING orphan is
+        // harmless: only ACTIVE rows reserve a name, and the user can retry.
+        await ctx.db
+          .$transaction([
+            ctx.db.payCodeParam.deleteMany({ where: { payCodeId: payCode.id } }),
+            ctx.db.payCode.delete({ where: { id: payCode.id } }),
+          ])
+          .catch((err: any) =>
+            console.error("Failed to clean up orphan pay code", err)
+          );
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create checkout",
+        });
+      }
+
+      // Persist the checkout id so redeemPayCode can verify payment later.
+      // If this fails, do not hand back a checkout URL — the user would pay
+      // but redemption could never verify the binding.
+      await ctx.db.payCode
+        .update({
+          where: { id: payCode.id },
+          data: { checkoutId },
+        })
+        .catch((e: any) => {
+          console.error("Failed to store checkout id", e);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to create checkout",
+          });
+        });
+
       return {
         payCodeId: payCode.id,
         userName: payCode.userName,
         domain: payCode.domain,
+        checkoutUrl: `/checkout/${checkoutId}`,
       };
-    }),
-
-  checkPayment: publicProcedure
-    .input(
-      z.object({
-        invoiceId: z.string(),
-      })
-    )
-    .query(async ({ ctx, input }) => {
-      const invoice = await ctx.db.invoice
-        .findUnique({
-          where: {
-            id: input.invoiceId,
-          },
-        })
-        .catch((e: any) => {
-          console.error("e", e);
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to lookup invoice",
-          });
-        });
-
-      if (!invoice) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Invoice does not exist",
-        });
-      }
-
-      return { status: invoice.status };
     }),
 
   redeemPayCode: publicProcedure
@@ -384,25 +409,60 @@ export const payCodeRouter = createTRPCRouter({
         });
       }
 
-      // Payment verification is handled by the MDK SDK on the client side
-      // via useCheckoutSuccess(). The user can only reach the success page
-      // after MDK confirms the payment.
+      // Server-side payment verification (fail closed). Never trust the client:
+      // confirm with MDK that the checkout bound to this paycode was actually
+      // paid before publishing DNS. Done before the transaction so the MDK
+      // network call cannot blow the transaction timeout.
+      if (!pendingPayCode.checkoutId) {
+        // Legacy/orphan PENDING rows created before server-side checkouts.
+        // No payment can be proven -> refuse.
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "No payment is associated with this pay code. Please create it again.",
+        });
+      }
+
+      let checkout;
+      try {
+        checkout = await getMdkCheckout(pendingPayCode.checkoutId);
+      } catch (e: any) {
+        console.error("Failed to fetch checkout from MDK", e);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to verify payment. Please try again.",
+        });
+      }
+
+      if (!isCheckoutPaid(checkout, PAY_CODE_PRICE_SATS)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Payment has not been received for this pay code.",
+        });
+      }
 
       // TODO: If the CF post fails, paycode should still be taken by user since they purchased it.
       // TODO: If the transaction takes long (like 5s or something) it will time out and fail...
       // can happen if ex. CF api is slow. Better way?
       const payCode = await ctx.db
         .$transaction(async (transactionPrisma) => {
-          const updatePayCode = await transactionPrisma.payCode.update({
-            where: {
-              id: input.payCodeId,
-            },
-            data: {
-              status: PayCodeStatus.ACTIVE,
-            },
-            include: {
-              params: true,
-            },
+          // Atomically claim the paycode: only flip it if it is still PENDING.
+          // A concurrent redeem blocks on the row lock, re-evaluates the
+          // predicate after the winner commits, matches 0 rows, and loses here
+          // — preventing a double DNS publish.
+          const claimed = await transactionPrisma.payCode.updateMany({
+            where: { id: input.payCodeId, status: PayCodeStatus.PENDING },
+            data: { status: PayCodeStatus.ACTIVE },
+          });
+          if (claimed.count === 0) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "Pay code was already redeemed",
+            });
+          }
+          const updatePayCode = await transactionPrisma.payCode.findUniqueOrThrow({
+            where: { id: input.payCodeId },
+            include: { params: true },
           });
           // Double check that there isn't already a record there...
           const CF_BASE_URL = `https://api.cloudflare.com/client/v4/zones/${
@@ -479,6 +539,9 @@ export const payCodeRouter = createTRPCRouter({
           return updatePayCode;
         })
         .catch((e: any) => {
+          // Preserve typed errors (CONFLICT, PRECONDITION_FAILED, etc.) thrown
+          // inside the transaction instead of masking them as 500s.
+          if (e instanceof TRPCError) throw e;
           console.error("Failed to complete transaction", e);
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",

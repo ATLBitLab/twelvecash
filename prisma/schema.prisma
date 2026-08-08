@@ -37,6 +37,7 @@ model PayCode {
   label     String?
   domain    String
   userName  String // should not be unique so people can get an expired username
+  checkoutId String? @unique // MDK checkout id; null on free-tier/legacy rows
   params    PayCodeParam[]
   user      User?          @relation(fields: [userId], references: [id])
   userId    String?

@@ -59,6 +59,8 @@ public/            # Static assets
 ## Key Files
 
 - `src/app/record/route.ts` - Main API endpoint for DNS record creation
+- `src/server/api/routers/payCode.ts` - Paid/free paycode create + redeem procedures
+- `src/server/mdk.ts` - Server-side MDK checkout create/verify; payment verification for paid paycodes
 - `prisma/schema.prisma` - Database models
 - `.env.sample` - Required environment variables
 

@@ -11,8 +11,7 @@ import { api } from "@/trpc/react";
 import { useZodForm } from "@/lib/util/useZodForm";
 import { useRouter } from "next/navigation";
 import { RouterInputs } from "@/trpc/react";
-import { createPayCodeInput } from "@/lib/util/constant";
-import { useCheckout } from "@moneydevkit/nextjs";
+import { createPayCodeInput, PAY_CODE_PRICE_SATS } from "@/lib/util/constant";
 
 interface NewPayCodeFormProps {
     defaultDomain: string;
@@ -26,38 +25,14 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
     const [isCreating, setIsCreating] = useState(false);
 
     const router = useRouter();
-    const { createCheckout, isLoading: isCheckoutLoading } = useCheckout();
     const payCodeInput = useMemo(() => createPayCodeInput(props.domains), [props.domains]);
 
   const createPayCode = api.payCode.createPayCode.useMutation({
-    onSuccess: async (data) => {
-      console.debug("PayCode created, creating MDK checkout...", data);
+    onSuccess: (data) => {
       setCheckoutError(null);
-
-      // Create an MDK checkout for the pay code purchase
-      const result = await createCheckout({
-        type: "AMOUNT",
-        amount: 5000,
-        currency: "SAT",
-        title: "Purchase Pay Code",
-        description: `Purchase pay code: ${data.userName}@${data.domain}`,
-        successUrl: `/new/success?payCodeId=${data.payCodeId}`,
-        metadata: {
-          payCodeId: data.payCodeId,
-          userName: data.userName,
-          domain: data.domain,
-        },
-      });
-
-      if (result.error) {
-        console.error("MDK checkout failed:", result.error);
-        setCheckoutError(result.error.message);
-        setIsCreating(false);
-        return;
-      }
-
-      // Redirect to MDK checkout page
-      window.location.href = result.data.checkoutUrl;
+      // The checkout was created server-side; just go pay. Keep the button
+      // busy through navigation (no setIsCreating(false)).
+      window.location.href = data.checkoutUrl;
     },
     onError: (err) => {
       console.error("Failed to create paycode", err);
@@ -128,7 +103,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
     createPayCode.mutate(data);
   };
 
-  const isBusy = isCreating || createPayCode.isPending || isCheckoutLoading;
+  const isBusy = isCreating || createPayCode.isPending;
   const selectedDomain = watch("domain") || props.defaultDomain;
   const getMessage = (message: unknown) =>
     typeof message === "string" ? message : undefined;
@@ -144,7 +119,7 @@ export default function NewPayCodeForm(props: NewPayCodeFormProps) {
                 active={!freeName}
                 onClick={() => setFreeName(false)}
                 >
-                Choose a Name (5,000 sats)
+                Choose a Name ({PAY_CODE_PRICE_SATS.toLocaleString()} sats)
                 </Button>
                 <Button
                 format="outline"

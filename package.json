@@ -18,6 +18,7 @@
   "dependencies": {
     "@bitcoin-design/bitcoin-icons-react": "^0.1.10",
     "@hookform/resolvers": "^3.9.0",
+    "@moneydevkit/core": "0.18.0",
     "@moneydevkit/lightning-js": "0.1.84",
     "@moneydevkit/nextjs": "^0.18.0",
     "@prisma/client": "^5.17.0",
