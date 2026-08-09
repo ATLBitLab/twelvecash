@@ -40,7 +40,6 @@ function getMdk(): MdkModule {
   // Lazy + memoized: the napi lightning binary only loads when a paid-tier
   // procedure actually runs, not on every tRPC cold start.
   if (!mdk) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     mdk = require("@moneydevkit/core") as MdkModule;
   }
   return mdk;
