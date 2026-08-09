@@ -21,6 +21,12 @@ The API uses [tRPC](https://trpc.io/) for type-safe communication. All endpoints
 https://twelve.cash/api/trpc/<procedure>
 ```
 
+> **Retired: `POST /record`.** The legacy REST endpoint has been removed. It let any
+> caller publish a self-chosen username to DNS with no payment and no database row,
+> which made the paid custom-username tier free for anyone who called it directly.
+> Integrators should use `payCode.createRandomPayCode` for a free name, or
+> `payCode.createPayCode` + `payCode.redeemPayCode` for a chosen one.
+
 ### Create a Free Random Username
 
 Create a free username with a randomly generated name (format: `adjective.animal`).
