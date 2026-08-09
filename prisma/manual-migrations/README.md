@@ -25,6 +25,13 @@ have no server-verifiable checkout, and creates:
 - a partial unique index on `lower(userName), lower(domain)` for PENDING and
   ACTIVE rows.
 
+"Legacy" means **both** `checkoutId` and `reservationExpiresAt` are NULL. A row
+with a lease but no checkout id is a live `createPayCode` call that has claimed
+the name and is waiting on MDK, so it is left alone. Matching on `checkoutId IS
+NULL` alone would expire that row mid-flight on a rerun against a live database;
+the request would then complete and hand out a payable URL for a row redemption
+will reject. Rerunning this file against a live database is safe.
+
 The script deliberately aborts rather than choosing a winner if live rows
 already collide case-insensitively. It also aborts if a partially deployed
 checkout row has a checkout ID but no reservation expiry; reconcile that row

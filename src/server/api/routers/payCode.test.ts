@@ -121,18 +121,55 @@ describe("payCode.createRandomPayCode", () => {
     });
 
     expect(names.uniqueNamesGenerator).toHaveBeenCalledTimes(2);
-    expect(txPayCode.updateMany).toHaveBeenNthCalledWith(
+    expect(txPayCode.findFirst).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
         where: expect.objectContaining({
           userName: { equals: "reserved.badger", mode: "insensitive" },
-          status: "PENDING",
-          reservationExpiresAt: { lte: expect.any(Date) },
+          status: { in: ["ACTIVE", "PENDING"] },
         }),
       })
     );
     expect(txPayCode.create).toHaveBeenCalledTimes(1);
     expect(axios.post).toHaveBeenCalledTimes(1);
+  });
+
+  it("never releases a reservation it cannot prove is unpaid", async () => {
+    names.uniqueNamesGenerator
+      .mockReturnValueOnce("held.badger")
+      .mockReturnValueOnce("free.badger");
+    const txPayCode = {
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      findFirst: jest
+        .fn()
+        .mockResolvedValueOnce(
+          // Lease long expired, but this path has no way to know whether the
+          // holder paid. It must generate a different name, not reclaim.
+          pendingPayCode({
+            userName: "held.badger",
+            reservationExpiresAt: new Date(Date.now() - 60 * 60 * 1000),
+          })
+        )
+        .mockResolvedValueOnce(null),
+      create: jest
+        .fn()
+        .mockResolvedValue(
+          pendingPayCode({ userName: "free.badger", status: "ACTIVE" })
+        ),
+    };
+    const db = {
+      $transaction: jest.fn((operation) => operation({ payCode: txPayCode })),
+    };
+
+    await expect(
+      callerFor(db).createRandomPayCode({
+        domain: "twelve.cash",
+        lno: "lno-test",
+      })
+    ).resolves.toMatchObject({ userName: "free.badger" });
+
+    expect(txPayCode.updateMany).not.toHaveBeenCalled();
+    expect(mdk.getMdkCheckout).not.toHaveBeenCalled();
   });
 
   it("retries a unique-index race instead of returning a 500", async () => {
@@ -181,7 +218,8 @@ describe("payCode.createPayCode", () => {
     const db = {
       payCode: {
         findFirst: jest.fn().mockResolvedValue(null),
-        update: jest.fn().mockResolvedValue(reserved),
+        findMany: jest.fn().mockResolvedValue([]),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         delete: jest.fn(),
       },
       payCodeParam: { deleteMany: jest.fn() },
@@ -201,17 +239,6 @@ describe("payCode.createPayCode", () => {
       checkoutUrl: "/checkout/checkout-1",
     });
 
-    expect(txPayCode.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          userName: { equals: "Alice", mode: "insensitive" },
-          domain: { equals: "twelve.cash", mode: "insensitive" },
-          status: "PENDING",
-          reservationExpiresAt: { lte: expect.any(Date) },
-        }),
-        data: { status: "EXPIRED" },
-      })
-    );
     expect(mdk.createMdkCheckout).toHaveBeenCalledWith(
       expect.objectContaining({
         amount: 5000,
@@ -219,15 +246,183 @@ describe("payCode.createPayCode", () => {
         metadata: expect.objectContaining({ payCodeId: "pay-code-1" }),
       })
     );
-    expect(db.payCode.update).toHaveBeenCalledWith({
-      where: { id: "pay-code-1" },
+    // The lease becomes the checkout's own expiry. No grace period is added:
+    // a fixed grace either robs a paid buyer or hands out a free hold.
+    expect(db.payCode.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "pay-code-1",
+        status: "PENDING",
+        reservationExpiresAt: expect.any(Date),
+      },
       data: {
         checkoutId: "checkout-1",
-        reservationExpiresAt: new Date(
-          checkoutExpiry.getTime() + 24 * 60 * 60 * 1000
-        ),
+        reservationExpiresAt: checkoutExpiry,
       },
     });
+  });
+
+  it("refuses the name when an expired reservation was actually paid", async () => {
+    // The buyer paid and never came back to redeem. Releasing their name would
+    // keep their sats and sell the name to this caller.
+    const db = {
+      payCode: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ id: "paid-row", checkoutId: "checkout-paid" }]),
+        updateMany: jest.fn(),
+        delete: jest.fn(),
+      },
+      payCodeParam: { deleteMany: jest.fn() },
+      $transaction: jest.fn(),
+    };
+    mdk.getMdkCheckout.mockResolvedValue({
+      id: "checkout-paid",
+      status: "EXPIRED",
+      expiresAt: new Date(Date.now() - 60_000),
+      invoice: { amountSatsReceived: 5000 },
+    });
+
+    await expect(callerFor(db).createPayCode(input())).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
+    expect(db.$transaction).not.toHaveBeenCalled();
+    expect(mdk.createMdkCheckout).not.toHaveBeenCalled();
+  });
+
+  it("keeps the name reserved while MDK still calls the checkout live", async () => {
+    // Our local lease elapsed but MDK has not declared the checkout dead, so the
+    // invoice may still settle. A local clock is not authority to kill it.
+    const db = {
+      payCode: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ id: "live-row", checkoutId: "checkout-live" }]),
+        updateMany: jest.fn(),
+        delete: jest.fn(),
+      },
+      payCodeParam: { deleteMany: jest.fn() },
+      $transaction: jest.fn(),
+    };
+    mdk.getMdkCheckout.mockResolvedValue({
+      id: "checkout-live",
+      status: "PENDING_PAYMENT",
+      expiresAt: new Date(Date.now() - 60_000),
+      invoice: { amountSatsReceived: 0 },
+    });
+
+    await expect(callerFor(db).createPayCode(input())).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
+    expect(db.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("releases an expired reservation only once MDK reports it terminally unpaid", async () => {
+    const checkoutExpiry = new Date(Date.now() + 60 * 60 * 1000);
+    const reserved = pendingPayCode();
+    const txPayCode = {
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      create: jest.fn().mockResolvedValue(reserved),
+    };
+    const db = {
+      payCode: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ id: "dead-row", checkoutId: "checkout-dead" }]),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        delete: jest.fn(),
+      },
+      payCodeParam: { deleteMany: jest.fn() },
+      $transaction: jest.fn((operation) => operation({ payCode: txPayCode })),
+    };
+    mdk.getMdkCheckout.mockResolvedValue({
+      id: "checkout-dead",
+      status: "EXPIRED",
+      expiresAt: new Date(Date.now() - 60_000),
+      invoice: { amountSatsReceived: 0 },
+    });
+    mdk.createMdkCheckout.mockResolvedValue({
+      id: "checkout-1",
+      status: "PENDING_PAYMENT",
+      expiresAt: checkoutExpiry,
+      invoice: null,
+    });
+
+    await expect(callerFor(db).createPayCode(input())).resolves.toMatchObject({
+      payCodeId: "pay-code-1",
+    });
+
+    // The release must re-assert every fact the sweep judged it on, including
+    // the observed checkoutId — the row may have been finalized since the read.
+    expect(txPayCode.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "dead-row",
+        status: "PENDING",
+        reservationExpiresAt: { lte: expect.any(Date) },
+        checkoutId: "checkout-dead",
+      },
+      data: { status: "EXPIRED" },
+    });
+  });
+
+  it("fails closed when an expired reservation cannot be verified with MDK", async () => {
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const db = {
+      payCode: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ id: "row", checkoutId: "checkout-x" }]),
+        updateMany: jest.fn(),
+        delete: jest.fn(),
+      },
+      payCodeParam: { deleteMany: jest.fn() },
+      $transaction: jest.fn(),
+    };
+    mdk.getMdkCheckout.mockRejectedValue(new Error("MDK unreachable"));
+
+    await expect(callerFor(db).createPayCode(input())).rejects.toMatchObject({
+      code: "INTERNAL_SERVER_ERROR",
+    });
+    expect(db.$transaction).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it("does not hand back a checkout URL if the reservation was lost meanwhile", async () => {
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const txPayCode = {
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      create: jest.fn().mockResolvedValue(pendingPayCode()),
+    };
+    const db = {
+      payCode: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
+        // The row is no longer PENDING with its original lease — a migration
+        // rerun or a sweep took it while MDK was working.
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        delete: jest.fn(),
+      },
+      payCodeParam: { deleteMany: jest.fn() },
+      $transaction: jest.fn((operation) => operation({ payCode: txPayCode })),
+    };
+    mdk.createMdkCheckout.mockResolvedValue({
+      id: "checkout-1",
+      status: "PENDING_PAYMENT",
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      invoice: null,
+    });
+
+    await expect(callerFor(db).createPayCode(input())).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
+    consoleError.mockRestore();
   });
 
   it("lets only one case-insensitive concurrent reservation reach MDK", async () => {
@@ -251,7 +446,8 @@ describe("payCode.createPayCode", () => {
     const db = {
       payCode: {
         findFirst: jest.fn().mockResolvedValue(null),
-        update: jest.fn().mockResolvedValue({}),
+        findMany: jest.fn().mockResolvedValue([]),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         delete: jest.fn(),
       },
       payCodeParam: { deleteMany: jest.fn() },

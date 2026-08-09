@@ -8,11 +8,17 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "@/server/api/trpc";
-import { createMdkCheckout, getMdkCheckout, isCheckoutPaid } from "@/server/mdk";
+import {
+  createMdkCheckout,
+  getMdkCheckout,
+  isCheckoutPaid,
+  isCheckoutTerminallyUnpaid,
+} from "@/server/mdk";
 import { TRPCError } from "@trpc/server";
 import {
   PayCodeStatus,
   Prisma,
+  type PrismaClient,
 } from "@prisma/client";
 import {
   createBip21,
@@ -31,12 +37,12 @@ import { z } from "zod";
 const domainMap = JSON.parse(process.env.DOMAINS!);
 const supportedDomains = Object.keys(domainMap);
 
-// The short lease covers the MDK call between reserving a name and receiving
-// the checkout's authoritative expiry. A successfully-created checkout then
-// owns the name until its expiry plus a grace period for users who paid but did
-// not immediately return to the success page.
+// The short lease only has to cover the MDK call between reserving a name and
+// learning the checkout's authoritative expiry. Once that returns, the lease is
+// the checkout's own expiry — no grace period is added. A fixed grace is wrong
+// in both directions: too short robs a buyer who paid, too long is a free hold
+// on someone else's name. sweepStaleReservations asks MDK instead.
 const CHECKOUT_CREATION_RESERVATION_MS = 10 * 60 * 1000;
-const CHECKOUT_REDEMPTION_GRACE_MS = 24 * 60 * 60 * 1000;
 
 const caseInsensitiveNameWhere = (userName: string, domain: string) => ({
   userName: { equals: userName, mode: Prisma.QueryMode.insensitive },
@@ -54,6 +60,80 @@ const nameTakenError = () =>
     code: "CONFLICT",
     message: "User name is taken",
   });
+
+/**
+ * Decide which expired PENDING reservations for a name may actually be
+ * released.
+ *
+ * An expired lease does not mean the name is free. The holder may have paid and
+ * simply not returned to redeem yet, and releasing their row would sell their
+ * name to somebody else while keeping their sats. So every candidate is
+ * re-checked against MDK using the same predicate redemption uses, and anything
+ * that is paid — or that we cannot prove is unpaid — is left reserved.
+ *
+ * Runs before the reservation transaction: these are network calls and must not
+ * hold a database transaction open. Because it reads outside the transaction,
+ * every returned candidate carries the exact state it was judged on so the
+ * release write can require that state to be unchanged.
+ */
+async function sweepStaleReservations(
+  db: PrismaClient,
+  userName: string,
+  domain: string,
+  now: Date
+): Promise<{
+  releasable: { id: string; checkoutId: string | null }[];
+  taken: boolean;
+  unverifiable: boolean;
+}> {
+  const expired = await db.payCode.findMany({
+    where: {
+      ...caseInsensitiveNameWhere(userName, domain),
+      status: PayCodeStatus.PENDING,
+      reservationExpiresAt: { lte: now },
+    },
+    select: { id: true, checkoutId: true },
+  });
+
+  const releasable: { id: string; checkoutId: string | null }[] = [];
+  let taken = false;
+  let unverifiable = false;
+
+  for (const reservation of expired) {
+    // No checkout was ever bound to this row, so createPayCode never returned a
+    // payable URL for it and nobody can have paid it. This observation is only
+    // good as long as checkoutId stays null, which the release write enforces.
+    if (!reservation.checkoutId) {
+      releasable.push(reservation);
+      continue;
+    }
+    try {
+      const checkout = await getMdkCheckout(reservation.checkoutId);
+      if (checkout.id !== reservation.checkoutId) {
+        // Same fail-closed binding rule redemption uses: a wrong response must
+        // never be allowed to release somebody else's reservation.
+        console.error("MDK returned a checkout with the wrong id");
+        unverifiable = true;
+      } else if (isCheckoutPaid(checkout, PAY_CODE_PRICE_SATS)) {
+        // Bought and not yet redeemed. The name belongs to that buyer.
+        taken = true;
+      } else if (isCheckoutTerminallyUnpaid(checkout, PAY_CODE_PRICE_SATS)) {
+        releasable.push(reservation);
+      } else {
+        // Unpaid, but MDK has not declared the checkout dead. Our local lease
+        // expiring is not authority to kill a checkout that may still settle.
+        taken = true;
+      }
+    } catch (e: unknown) {
+      // Fail closed. Refusing this create is recoverable; reselling a name
+      // somebody already paid for is not.
+      console.error("Failed to verify an expired reservation with MDK", e);
+      unverifiable = true;
+    }
+  }
+
+  return { releasable, taken, unverifiable };
+}
 
 export const payCodeRouter = createTRPCRouter({
   createRandomPayCode: publicProcedure
@@ -136,30 +216,18 @@ export const payCodeRouter = createTRPCRouter({
 
         try {
           payCode = await ctx.db.$transaction(async (transactionPrisma) => {
-            const now = new Date();
-            await transactionPrisma.payCode.updateMany({
-              where: {
-                ...caseInsensitiveNameWhere(userName, input.domain),
-                status: PayCodeStatus.PENDING,
-                reservationExpiresAt: { lte: now },
-              },
-              data: { status: PayCodeStatus.EXPIRED },
-            });
-
+            // Any PENDING or ACTIVE row blocks this candidate, expired lease or
+            // not. This path never releases a reservation: it cannot tell a paid
+            // one from an abandoned one without an MDK round trip, and it does
+            // not need to — it just generates a different name. Reclaiming
+            // expired reservations is createPayCode's job, where the caller
+            // actually wants that specific name.
             const existingPayCode = await transactionPrisma.payCode.findFirst({
               where: {
                 ...caseInsensitiveNameWhere(userName, input.domain),
-                OR: [
-                  { status: PayCodeStatus.ACTIVE },
-                  {
-                    status: PayCodeStatus.PENDING,
-                    reservationExpiresAt: { gt: now },
-                  },
-                  {
-                    status: PayCodeStatus.PENDING,
-                    reservationExpiresAt: null,
-                  },
-                ],
+                status: {
+                  in: [PayCodeStatus.ACTIVE, PayCodeStatus.PENDING],
+                },
               },
             });
             if (existingPayCode) return undefined;
@@ -325,21 +393,54 @@ export const payCodeRouter = createTRPCRouter({
         now.getTime() + CHECKOUT_CREATION_RESERVATION_MS
       );
 
-      // Expire a stale checkout lease and claim the name in one transaction.
-      // PostgreSQL's partial unique index on lower(userName), lower(domain)
-      // serializes racing inserts for PENDING/ACTIVE names. The preflight read
-      // above is deliberately not treated as a lock.
+      // An expired lease is not automatically free — the holder may have paid
+      // and not redeemed yet. Resolve that against MDK before touching anything.
+      const sweep = await sweepStaleReservations(
+        ctx.db,
+        input.userName,
+        input.domain,
+        now
+      );
+      if (sweep.taken) {
+        // Either somebody bought this name and has not redeemed it, or their
+        // checkout is still live. Either way it is not ours to sell.
+        throw nameTakenError();
+      }
+      if (sweep.unverifiable) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            "Could not verify an existing reservation for this name. Please try again.",
+        });
+      }
+
+      // Release the reservations proven unpaid and claim the name in one
+      // transaction. PostgreSQL's partial unique index on lower(userName),
+      // lower(domain) serializes racing inserts for PENDING/ACTIVE names. The
+      // preflight read above is deliberately not treated as a lock.
       let payCode: Prisma.PayCodeGetPayload<{ include: { params: true } }>;
       try {
         payCode = await ctx.db.$transaction(async (transactionPrisma) => {
-          await transactionPrisma.payCode.updateMany({
-            where: {
-              ...caseInsensitiveNameWhere(input.userName, input.domain),
-              status: PayCodeStatus.PENDING,
-              reservationExpiresAt: { lte: now },
-            },
-            data: { status: PayCodeStatus.EXPIRED },
-          });
+          // Release each reservation only if it still looks exactly as it did
+          // when it was judged. The sweep read outside this transaction, so in
+          // between, a slow createPayCode may have finalized that very row with
+          // a real checkout id and a future lease — expiring it on row id alone
+          // would hand its owner a payable URL for a dead reservation.
+          //
+          // A zero-count release is not a failure and not a licence to proceed
+          // as if the name were free: the partial unique index below arbitrates
+          // and a still-live row turns the insert into a CONFLICT.
+          for (const reservation of sweep.releasable) {
+            await transactionPrisma.payCode.updateMany({
+              where: {
+                id: reservation.id,
+                status: PayCodeStatus.PENDING,
+                reservationExpiresAt: { lte: now },
+                checkoutId: reservation.checkoutId,
+              },
+              data: { status: PayCodeStatus.EXPIRED },
+            });
+          }
 
           const data: Prisma.PayCodeCreateInput = {
             userName: input.userName,
@@ -417,18 +518,23 @@ export const payCodeRouter = createTRPCRouter({
         });
       }
 
-      const reservationExpiresAt = new Date(
-        checkoutExpiresAt.getTime() + CHECKOUT_REDEMPTION_GRACE_MS
-      );
-
       // Persist the checkout id so redeemPayCode can verify payment later, and
-      // align the lease with MDK's checkout lifetime. If this fails, do not hand
-      // back a checkout URL — the user would pay but redemption could not prove
-      // the binding.
-      await ctx.db.payCode
-        .update({
-          where: { id: payCode.id },
-          data: { checkoutId, reservationExpiresAt },
+      // hand the lease over to MDK's own checkout lifetime.
+      //
+      // Conditional on the row still being PENDING and still holding the exact
+      // lease we wrote: anything else means this reservation was released or
+      // rewritten while MDK was working (a rerun of the manual migration, a
+      // reconciliation job, a sweep by another caller). Returning a payable URL
+      // for a row that redemption will later reject would take the user's money
+      // and give them nothing.
+      const finalized = await ctx.db.payCode
+        .updateMany({
+          where: {
+            id: payCode.id,
+            status: PayCodeStatus.PENDING,
+            reservationExpiresAt: initialReservationExpiry,
+          },
+          data: { checkoutId, reservationExpiresAt: checkoutExpiresAt },
         })
         .catch((e: any) => {
           console.error("Failed to store checkout id", e);
@@ -437,6 +543,15 @@ export const payCodeRouter = createTRPCRouter({
             message: "Failed to create checkout",
           });
         });
+      if (finalized.count === 0) {
+        // The checkout exists but is deliberately not handed to the caller; it
+        // simply expires unpaid on MDK's side.
+        console.error(
+          "Lost the name reservation while creating the checkout",
+          payCode.id
+        );
+        throw nameTakenError();
+      }
 
       return {
         payCodeId: payCode.id,

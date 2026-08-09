@@ -15,9 +15,17 @@ ALTER TABLE "PayCode"
 
 -- Pre-server-verification PENDING rows have no payment proof and cannot be
 -- redeemed by the new code. Release them before creating the live-name index.
+--
+-- Both columns must be NULL. A row with a lease but no checkout id is NOT
+-- legacy: it is a live createPayCode call that has claimed the name and is
+-- waiting on MDK. Matching on "checkoutId" IS NULL alone expires that row
+-- mid-flight on any rerun against a live database, after which the request
+-- would finish and hand out a payable URL for a row redemption will reject.
 UPDATE "PayCode"
 SET "status" = 'EXPIRED', "updatedAt" = CURRENT_TIMESTAMP
-WHERE "status" = 'PENDING' AND "checkoutId" IS NULL;
+WHERE "status" = 'PENDING'
+  AND "checkoutId" IS NULL
+  AND "reservationExpiresAt" IS NULL;
 
 -- A partial deployment of the server-verification PR may already have payable
 -- checkouts but no locally recorded lease expiry. Those must be reconciled
