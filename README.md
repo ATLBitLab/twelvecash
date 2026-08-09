@@ -176,6 +176,16 @@ pnpm postinstall
 pnpm db:push
 ```
 
+Then apply the SQL-managed indexes. `db:push` cannot create them — Prisma 5 can't express a
+partial expression index — and without them the pay code name reservation has no atomicity,
+so two callers can both reserve the same custom username:
+
+```bash
+pnpm db:manual-migrations
+```
+
+See `prisma/manual-migrations/README.md` for what this does and how to apply it in production.
+
 Run the development server:
 
 ```bash

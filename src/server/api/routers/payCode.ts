@@ -31,6 +31,30 @@ import { z } from "zod";
 const domainMap = JSON.parse(process.env.DOMAINS!);
 const supportedDomains = Object.keys(domainMap);
 
+// The short lease covers the MDK call between reserving a name and receiving
+// the checkout's authoritative expiry. A successfully-created checkout then
+// owns the name until its expiry plus a grace period for users who paid but did
+// not immediately return to the success page.
+const CHECKOUT_CREATION_RESERVATION_MS = 10 * 60 * 1000;
+const CHECKOUT_REDEMPTION_GRACE_MS = 24 * 60 * 60 * 1000;
+
+const caseInsensitiveNameWhere = (userName: string, domain: string) => ({
+  userName: { equals: userName, mode: Prisma.QueryMode.insensitive },
+  domain: { equals: domain, mode: Prisma.QueryMode.insensitive },
+});
+
+const isPrismaUniqueConstraintError = (error: unknown): boolean =>
+  typeof error === "object" &&
+  error !== null &&
+  "code" in error &&
+  (error as { code?: unknown }).code === "P2002";
+
+const nameTakenError = () =>
+  new TRPCError({
+    code: "CONFLICT",
+    message: "User name is taken",
+  });
+
 export const payCodeRouter = createTRPCRouter({
   createRandomPayCode: publicProcedure
     .input(createRandomPayCodeInput(supportedDomains))
@@ -57,74 +81,6 @@ export const payCodeRouter = createTRPCRouter({
       }
       console.debug("bip21", bip21);
 
-      let errMsg = "";
-      let userName = "";
-      let fullName = "";
-      const CF_BASE_URL = `https://api.cloudflare.com/client/v4/zones/${
-        domainMap[input.domain]
-      }/dns_records`;
-      for (let i = 0; i < 5; i++) {
-        userName = uniqueNamesGenerator({
-          dictionaries: [adjectives, animals],
-          length: 2,
-          separator: ".",
-        });
-        fullName = process.env.NETWORK
-          ? `${userName}.user._bitcoin-payment.${process.env.NETWORK}.${input.domain}`
-          : `${userName}.user._bitcoin-payment.${input.domain}`;
-
-        // First check to see if this user name already exists in DNS
-        // Eventually, all paycodes will be in the DB.
-        const res = await axios
-          .get(`${CF_BASE_URL}?name=${fullName}&type=TXT`, {
-            headers: {
-              Content_Type: "application/json",
-              Authorization: `Bearer ${process.env.CF_TOKEN}`,
-            },
-          })
-          .catch((e: any) => {
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Server failed to talk to DNS",
-            });
-          });
-        if (res.data.result.length > 0) {
-          errMsg = "Name is already taken.";
-          continue;
-        }
-
-        // Check if the paycode exists in the our database
-        const existingPayCode = await ctx.db.payCode
-          .findFirst({
-            where: {
-              AND: [
-                { userName: userName },
-                { domain: input.domain },
-                { status: PayCodeStatus.ACTIVE },
-              ],
-            },
-          })
-          .catch((e: any) => {
-            console.error("e", e);
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Failed to lookup paycode",
-            });
-          });
-        if (!existingPayCode) {
-          // username doesn't exist in DNS or database, break out of the loop and create
-          errMsg = "";
-          break;
-        }
-      }
-
-      if (errMsg) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to generate random paycode",
-        });
-      }
-
       let create: Prisma.PayCodeParamCreateWithoutPayCodeInput[] = [];
       try {
         create = createPayCodeParams(
@@ -142,66 +98,135 @@ export const payCodeRouter = createTRPCRouter({
         });
       }
 
-      const payCode = await ctx.db.$transaction(async (transactionPrisma) => {
-        const data: Prisma.PayCodeCreateInput = {
-          userName: userName,
-          domain: input.domain,
-          status: PayCodeStatus.ACTIVE,
-          params: {
-            create: create,
-          },
-        };
+      const CF_BASE_URL = `https://api.cloudflare.com/client/v4/zones/${
+        domainMap[input.domain]
+      }/dns_records`;
+      let payCode:
+        | Prisma.PayCodeGetPayload<{ include: { params: true } }>
+        | undefined;
 
-        if (ctx.user) {
-          data.user = {
-            connect: { id: ctx.user.id },
-          };
-        }
+      // Generation is intentionally bounded. Each candidate expires a stale
+      // PENDING lease before checking live reservations, and the database index
+      // still resolves a race between that check and the ACTIVE insert. A
+      // unique collision simply burns this candidate and generates another.
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const userName = uniqueNamesGenerator({
+          dictionaries: [adjectives, animals],
+          length: 2,
+          separator: ".",
+        });
+        const fullName = process.env.NETWORK
+          ? `${userName}.user._bitcoin-payment.${process.env.NETWORK}.${input.domain}`
+          : `${userName}.user._bitcoin-payment.${input.domain}`;
 
-        let innerPaycode = await transactionPrisma.payCode
-          .create({
-            data: data,
-            include: {
-              params: true, // Include params in the response
+        const res = await axios
+          .get(`${CF_BASE_URL}?name=${fullName}&type=TXT`, {
+            headers: {
+              Content_Type: "application/json",
+              Authorization: `Bearer ${process.env.CF_TOKEN}`,
             },
           })
-          .catch((e: any) => {
+          .catch(() => {
             throw new TRPCError({
               code: "INTERNAL_SERVER_ERROR",
-              message: "Failed to add paycode to database",
+              message: "Server failed to talk to DNS",
             });
           });
+        if (res.data.result.length > 0) continue;
 
-        await axios
-          .post(
-            CF_BASE_URL,
-            {
-              content: bip21,
-              name: fullName,
-              proxied: false,
-              type: "TXT",
-              comment: "Twelve Cash User DNS Update",
-              ttl: 3600,
-            },
-            {
-              method: "POST",
-              headers: {
-                Content_Type: "application/json",
-                Authorization: `Bearer ${process.env.CF_TOKEN}`,
+        try {
+          payCode = await ctx.db.$transaction(async (transactionPrisma) => {
+            const now = new Date();
+            await transactionPrisma.payCode.updateMany({
+              where: {
+                ...caseInsensitiveNameWhere(userName, input.domain),
+                status: PayCodeStatus.PENDING,
+                reservationExpiresAt: { lte: now },
               },
-            }
-          )
-          .catch((e: any) => {
-            console.error("Failed to post record to CloudFlare", e);
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: "Failed to post record to CloudFlare",
+              data: { status: PayCodeStatus.EXPIRED },
             });
-          });
 
-        return innerPaycode;
-      });
-      // TODO: catch and throw again?
+            const existingPayCode = await transactionPrisma.payCode.findFirst({
+              where: {
+                ...caseInsensitiveNameWhere(userName, input.domain),
+                OR: [
+                  { status: PayCodeStatus.ACTIVE },
+                  {
+                    status: PayCodeStatus.PENDING,
+                    reservationExpiresAt: { gt: now },
+                  },
+                  {
+                    status: PayCodeStatus.PENDING,
+                    reservationExpiresAt: null,
+                  },
+                ],
+              },
+            });
+            if (existingPayCode) return undefined;
+
+            const data: Prisma.PayCodeCreateInput = {
+              userName,
+              domain: input.domain,
+              status: PayCodeStatus.ACTIVE,
+              params: { create },
+            };
+            if (ctx.user) {
+              data.user = { connect: { id: ctx.user.id } };
+            }
+
+            const createdPayCode = await transactionPrisma.payCode.create({
+              data,
+              include: { params: true },
+            });
+
+            await axios
+              .post(
+                CF_BASE_URL,
+                {
+                  content: bip21,
+                  name: fullName,
+                  proxied: false,
+                  type: "TXT",
+                  comment: "Twelve Cash User DNS Update",
+                  ttl: 3600,
+                },
+                {
+                  method: "POST",
+                  headers: {
+                    Content_Type: "application/json",
+                    Authorization: `Bearer ${process.env.CF_TOKEN}`,
+                  },
+                }
+              )
+              .catch((e: unknown) => {
+                console.error("Failed to post record to CloudFlare", e);
+                throw new TRPCError({
+                  code: "INTERNAL_SERVER_ERROR",
+                  message: "Failed to post record to CloudFlare",
+                });
+              });
+
+            return createdPayCode;
+          });
+        } catch (e: unknown) {
+          if (isPrismaUniqueConstraintError(e)) continue;
+          if (e instanceof TRPCError) throw e;
+          console.error("Failed to create random paycode", e);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to add paycode to database",
+          });
+        }
+
+        if (payCode) break;
+      }
+
+      if (!payCode) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to generate random paycode",
+        });
+      }
 
       // Log activity (non-blocking, fire-and-forget)
       logPayCodeActivity({ type: "free", domain: input.domain });
@@ -240,16 +265,27 @@ export const payCodeRouter = createTRPCRouter({
           message: "User name is taken",
         });
       }
-      // Check if the paycode exists in the our database
-      // TODO: Should probably make sure there isn't any open invoices
-      // for the paycode.. someone could be in the middle of purchasing the same name...
+      // This read provides a fast, friendly conflict response. The partial
+      // unique index is still the authority: this read alone cannot prevent two
+      // concurrent callers from choosing the same name.
       const existingPayCode = await ctx.db.payCode
         .findFirst({
           where: {
             AND: [
-              { userName: input.userName },
-              { domain: input.domain },
-              { status: PayCodeStatus.ACTIVE },
+              caseInsensitiveNameWhere(input.userName, input.domain),
+              {
+                OR: [
+                  { status: PayCodeStatus.ACTIVE },
+                  {
+                    status: PayCodeStatus.PENDING,
+                    reservationExpiresAt: { gt: new Date() },
+                  },
+                  {
+                    status: PayCodeStatus.PENDING,
+                    reservationExpiresAt: null,
+                  },
+                ],
+              },
             ],
           },
         })
@@ -284,40 +320,62 @@ export const payCodeRouter = createTRPCRouter({
         });
       }
 
-      // Create the paycode in PENDING state
-      const data: Prisma.PayCodeCreateInput = {
-        userName: input.userName,
-        domain: input.domain,
-        status: PayCodeStatus.PENDING,
-        params: {
-          create: create,
-        },
-      };
+      const now = new Date();
+      const initialReservationExpiry = new Date(
+        now.getTime() + CHECKOUT_CREATION_RESERVATION_MS
+      );
 
-      if (ctx.user) {
-        data.user = {
-          connect: { id: ctx.user.id },
-        };
-      }
+      // Expire a stale checkout lease and claim the name in one transaction.
+      // PostgreSQL's partial unique index on lower(userName), lower(domain)
+      // serializes racing inserts for PENDING/ACTIVE names. The preflight read
+      // above is deliberately not treated as a lock.
+      let payCode: Prisma.PayCodeGetPayload<{ include: { params: true } }>;
+      try {
+        payCode = await ctx.db.$transaction(async (transactionPrisma) => {
+          await transactionPrisma.payCode.updateMany({
+            where: {
+              ...caseInsensitiveNameWhere(input.userName, input.domain),
+              status: PayCodeStatus.PENDING,
+              reservationExpiresAt: { lte: now },
+            },
+            data: { status: PayCodeStatus.EXPIRED },
+          });
 
-      const payCode = await ctx.db.payCode
-        .create({
-          data: data,
-          include: {
-            params: true,
-          },
-        })
-        .catch((e: any) => {
-          console.error(e);
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to add paycode to database",
+          const data: Prisma.PayCodeCreateInput = {
+            userName: input.userName,
+            domain: input.domain,
+            status: PayCodeStatus.PENDING,
+            reservationExpiresAt: initialReservationExpiry,
+            params: {
+              create: create,
+            },
+          };
+
+          if (ctx.user) {
+            data.user = {
+              connect: { id: ctx.user.id },
+            };
+          }
+
+          return transactionPrisma.payCode.create({
+            data,
+            include: { params: true },
           });
         });
+      } catch (e: unknown) {
+        if (isPrismaUniqueConstraintError(e)) throw nameTakenError();
+        if (e instanceof TRPCError) throw e;
+        console.error("Failed to reserve paycode", e);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to add paycode to database",
+        });
+      }
 
       // Create the MDK checkout server-side so the price and the
       // paycode<->checkout binding cannot be tampered with by the client.
       let checkoutId: string;
+      let checkoutExpiresAt: Date;
       try {
         const checkout = await createMdkCheckout({
           type: "AMOUNT",
@@ -333,11 +391,18 @@ export const payCodeRouter = createTRPCRouter({
           },
         });
         checkoutId = checkout.id;
+        checkoutExpiresAt = new Date(checkout.expiresAt);
+        if (
+          Number.isNaN(checkoutExpiresAt.getTime()) ||
+          checkoutExpiresAt.getTime() <= Date.now()
+        ) {
+          throw new Error("MDK returned an invalid checkout expiry");
+        }
       } catch (e: any) {
         console.error("Failed to create MDK checkout", e);
         // Best-effort cleanup of the just-created PENDING row (params first —
-        // the relation has no onDelete: Cascade). A leftover PENDING orphan is
-        // harmless: only ACTIVE rows reserve a name, and the user can retry.
+        // the relation has no onDelete: Cascade). If cleanup itself fails, the
+        // short creation lease releases the name for retry.
         await ctx.db
           .$transaction([
             ctx.db.payCodeParam.deleteMany({ where: { payCodeId: payCode.id } }),
@@ -352,13 +417,18 @@ export const payCodeRouter = createTRPCRouter({
         });
       }
 
-      // Persist the checkout id so redeemPayCode can verify payment later.
-      // If this fails, do not hand back a checkout URL — the user would pay
-      // but redemption could never verify the binding.
+      const reservationExpiresAt = new Date(
+        checkoutExpiresAt.getTime() + CHECKOUT_REDEMPTION_GRACE_MS
+      );
+
+      // Persist the checkout id so redeemPayCode can verify payment later, and
+      // align the lease with MDK's checkout lifetime. If this fails, do not hand
+      // back a checkout URL — the user would pay but redemption could not prove
+      // the binding.
       await ctx.db.payCode
         .update({
           where: { id: payCode.id },
-          data: { checkoutId },
+          data: { checkoutId, reservationExpiresAt },
         })
         .catch((e: any) => {
           console.error("Failed to store checkout id", e);
@@ -434,6 +504,14 @@ export const payCodeRouter = createTRPCRouter({
         });
       }
 
+      if (checkout.id !== pendingPayCode.checkoutId) {
+        console.error("MDK returned a checkout with the wrong id");
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to verify payment. Please try again.",
+        });
+      }
+
       if (!isCheckoutPaid(checkout, PAY_CODE_PRICE_SATS)) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
@@ -452,7 +530,10 @@ export const payCodeRouter = createTRPCRouter({
           // — preventing a double DNS publish.
           const claimed = await transactionPrisma.payCode.updateMany({
             where: { id: input.payCodeId, status: PayCodeStatus.PENDING },
-            data: { status: PayCodeStatus.ACTIVE },
+            data: {
+              status: PayCodeStatus.ACTIVE,
+              reservationExpiresAt: null,
+            },
           });
           if (claimed.count === 0) {
             throw new TRPCError({

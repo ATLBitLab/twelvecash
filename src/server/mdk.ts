@@ -14,6 +14,7 @@ import { PAY_CODE_PRICE_SATS } from "@/lib/util/constant";
 export interface MdkCheckout {
   id: string;
   status: string;
+  expiresAt: Date | string;
   invoice: { amountSatsReceived?: number | null } | null;
 }
 
