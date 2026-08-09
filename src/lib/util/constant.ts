@@ -2,6 +2,11 @@ import { z } from "zod";
 
 export type TwelveCashDomain = string;
 
+// Price of a custom (paid-tier) pay code. The server is the source of truth:
+// createPayCode creates the MDK checkout with this amount and redeemPayCode
+// requires at least this many sats received before activating.
+export const PAY_CODE_PRICE_SATS = 5000;
+
 const Custom = z.object({
   prefix: z.string(),
   value: z.string(),

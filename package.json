@@ -11,6 +11,7 @@
     "db:generate": "prisma migrate dev",
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
+    "db:manual-migrations": "prisma db execute --schema prisma/schema.prisma --file prisma/manual-migrations/20260809_paycode_checkout_reservations.sql",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset",
     "postinstall": "prisma generate"
@@ -18,6 +19,7 @@
   "dependencies": {
     "@bitcoin-design/bitcoin-icons-react": "^0.1.10",
     "@hookform/resolvers": "^3.9.0",
+    "@moneydevkit/core": "0.18.0",
     "@moneydevkit/lightning-js": "0.1.84",
     "@moneydevkit/nextjs": "^0.18.0",
     "@prisma/client": "^5.17.0",

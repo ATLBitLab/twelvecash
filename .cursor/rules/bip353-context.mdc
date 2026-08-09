@@ -33,5 +33,5 @@ All records must be DNSSEC-validated. This is handled via Cloudflare's DNSSEC im
 
 ## Key Files
 
-- `src/app/record/route.ts` - API endpoint for creating records
+- `src/server/api/routers/payCode.ts` - the only path that creates records
 - Uses Cloudflare DNS API for record management

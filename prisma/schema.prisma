@@ -29,20 +29,22 @@ model UserAuth {
 }
 
 model PayCode {
-  id        String         @id @default(uuid())
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-  expires   DateTime?
-  status    PayCodeStatus
-  label     String?
-  domain    String
-  userName  String // should not be unique so people can get an expired username
-  params    PayCodeParam[]
-  user      User?          @relation(fields: [userId], references: [id])
-  userId    String?
+  id                   String         @id @default(uuid())
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  expires              DateTime?
+  status               PayCodeStatus
+  label                String?
+  domain               String
+  userName             String // Case-insensitive live-name uniqueness is enforced by the manual SQL migration.
+  checkoutId           String?        @unique // MDK checkout id; null on free-tier/legacy rows
+  reservationExpiresAt DateTime? // PENDING paid-name lease; ACTIVE names do not expire through this field.
+  params               PayCodeParam[]
+  user                 User?          @relation(fields: [userId], references: [id])
+  userId               String?
   // single or array? one can time out... but could make a new PayCode per request
   // would check valid paycodes by looking at invoice redemption status
-  invoices  Invoice[]
+  invoices             Invoice[]
 }
 
 enum PayCodeStatus {

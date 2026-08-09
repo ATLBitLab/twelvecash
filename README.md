@@ -21,6 +21,12 @@ The API uses [tRPC](https://trpc.io/) for type-safe communication. All endpoints
 https://twelve.cash/api/trpc/<procedure>
 ```
 
+> **Retired: `POST /record`.** The legacy REST endpoint has been removed. It let any
+> caller publish a self-chosen username to DNS with no payment and no database row,
+> which made the paid custom-username tier free for anyone who called it directly.
+> Integrators should use `payCode.createRandomPayCode` for a free name, or
+> `payCode.createPayCode` + `payCode.redeemPayCode` for a chosen one.
+
 ### Create a Free Random Username
 
 Create a free username with a randomly generated name (format: `adjective.animal`).
@@ -82,15 +88,16 @@ Reserve a custom username. This creates a pending paycode that requires payment 
 {
   "payCodeId": "uuid",
   "userName": "satoshi",
-  "domain": "twelve.cash"
+  "domain": "twelve.cash",
+  "checkoutUrl": "/checkout/uuid"
 }
 ```
 
-After receiving the response, redirect the user to complete payment via the MDK checkout. Once payment is confirmed, call `redeemPayCode` to activate the username.
+The server creates the Lightning checkout and returns its `checkoutUrl` (a path on the same host). Redirect the user there to pay. Once payment is complete, call `redeemPayCode` to activate the username.
 
 ### Redeem a Paid Username
 
-Activate a paid username after payment confirmation.
+Activate a paid username. The server verifies payment with MDK before activating.
 
 **Procedure:** `payCode.redeemPayCode`
 
@@ -102,6 +109,8 @@ Activate a paid username after payment confirmation.
 ```
 
 **Response:** The activated paycode object with `status: "ACTIVE"`
+
+Payment is verified server-side: the checkout created during `createPayCode` must be paid in full. If it has not been paid, the call fails with `PRECONDITION_FAILED` and no DNS record is published.
 
 ### Lookup a Username
 
@@ -166,6 +175,16 @@ Create the Prisma client and push it to the database:
 pnpm postinstall
 pnpm db:push
 ```
+
+Then apply the SQL-managed indexes. `db:push` cannot create them — Prisma 5 can't express a
+partial expression index — and without them the pay code name reservation has no atomicity,
+so two callers can both reserve the same custom username:
+
+```bash
+pnpm db:manual-migrations
+```
+
+See `prisma/manual-migrations/README.md` for what this does and how to apply it in production.
 
 Run the development server:
 
