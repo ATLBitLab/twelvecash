@@ -9,8 +9,8 @@
 import { TRPCError, initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
-import jwt from "jsonwebtoken";
 
+import { getCurrentUser, type AppUser } from "@/lib/current-user";
 import { db } from "@/server/db";
 
 /**
@@ -26,29 +26,14 @@ import { db } from "@/server/db";
  * @see https://trpc.io/docs/server/context
  */
 import { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
-import { parse } from "cookie";
 
-export interface TokenUser {
-  id: string;
-  nostrPublicKey: string | null;
-  lnNodePublicKey: string | null;
-  apiKey: string;
-  createdAt: Date;
-  updatedAt: Date;
-  lastLogin: Date | null;
-}
+export type TokenUser = AppUser;
 
 export const createTRPCContext = async (opts: {
   headers: Headers;
   resHeaders?: FetchCreateContextFnOptions;
 }) => {
-  const cookieHeader = opts.headers.get("cookie");
-  const cookies = cookieHeader ? parse(cookieHeader) : {};
-  const accessToken = cookies["access-token"];
-
-  const user = accessToken
-    ? (jwt.verify(accessToken, process.env.JWT_SECRET ?? "") as TokenUser)
-    : undefined;
+  const user = await getCurrentUser(opts.headers);
 
   return {
     db,

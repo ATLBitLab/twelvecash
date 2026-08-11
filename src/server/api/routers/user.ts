@@ -22,7 +22,7 @@ export const userRouter = createTRPCRouter({
   logout: protectedProcedure.mutation(async ({ ctx }) => {
     ctx.resHeaders?.resHeaders.set(
       "Set-Cookie",
-      `access-token=; Path=/; HttpOnly; SameSite=Strict; Expires ${new Date(0)}`
+      `access-token=; Path=/; HttpOnly; SameSite=Strict; Expires=${new Date(0).toUTCString()}`
     );
     return { result: "Success" };
   }),

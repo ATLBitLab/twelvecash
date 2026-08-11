@@ -11,6 +11,7 @@ interface ButtonProps {
     active?: boolean;
     id?: string;
     className?: string;
+    type?: "button" | "submit" | "reset";
 }
 
 export default function Button(props:ButtonProps){
@@ -35,6 +36,7 @@ export default function Button(props:ButtonProps){
                     className={className}
                     disabled={props.disabled}
                     onClick={props.onClick}
+                    type={props.type || "button"}
                 >
                     {props.children || "Click Here"}
                 </button>
